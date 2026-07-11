@@ -158,24 +158,27 @@ def test_shinhan_query_carries_dataset_scoped_governance_metadata():
 @E2E
 def test_pg_loader_and_audit_are_schema_scoped():
     """Loading a dataset's policy must not touch public, and audit rows must land
-    in the dataset's schema. Uses the retail users.yaml as content for the
-    shinhan schema (content parity is irrelevant here; isolation is the point)."""
+    in the dataset's schema. Uses shinhan's OWN users.yaml so the (idempotent)
+    load leaves a provisioned demo store correct rather than clobbering it.
+    Known residual (accepted): the loader's prune step fails with an FK violation
+    if a user is removed from users.yaml after accruing audit rows."""
     import psycopg
 
     from governance import pg as gpg
+    from semantic_layer.datasets import get_dataset
 
     dsn = gpg.resolve_dsn()
-    retail_yaml = REPO_ROOT / "governance" / "fixtures" / "users.yaml"
+    shinhan_yaml = get_dataset("shinhan").users_yaml
 
     with psycopg.connect(dsn) as conn:
         before_public_users = conn.execute("SELECT count(*) FROM public.users").fetchone()[0]
         before_public_audit = conn.execute("SELECT count(*) FROM public.audit_log").fetchone()[0]
 
-    gpg.load_policy_to_db(users_yaml=retail_yaml, dataset="shinhan")
+    gpg.load_policy_to_db(users_yaml=shinhan_yaml, dataset="shinhan")
     gpg.write_audit(
         command="whoami",
-        token="tok-exec-mai",
-        user_id="u_mai",
+        token="tok-exec-sujin",
+        user_id="u_sujin",
         role="executive",
         request={},
         executed_query=None,
@@ -203,8 +206,9 @@ def test_pg_policy_roundtrip_from_shinhan_schema():
     """load_policy_from_db(dataset='shinhan') reconstructs the policy loaded above —
     the same parity guarantee phase 5 pinned for retail, now per schema."""
     from governance import pg as gpg
+    from semantic_layer.datasets import get_dataset
 
-    retail_yaml = REPO_ROOT / "governance" / "fixtures" / "users.yaml"
-    gpg.load_policy_to_db(users_yaml=retail_yaml, dataset="shinhan")
+    gpg.load_policy_to_db(users_yaml=get_dataset("shinhan").users_yaml, dataset="shinhan")
     policy = gpg.load_policy_from_db(dataset="shinhan")
-    assert "tok-exec-mai" in policy.personas  # retail fixture content, shinhan schema
+    assert "tok-exec-sujin" in policy.personas
+    assert "tok-exec-mai" not in policy.personas  # retail personas must not leak in
