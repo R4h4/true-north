@@ -406,6 +406,29 @@ class TestVocabularyValidator:
         )
         assert any("net_revenue" in e for e in errors)
 
+    def test_metric_concept_back_pointer_must_match_measured_by_owner(self, tmp_path):
+        # gmv-revenue exists but does not claim net_revenue via measured_by.
+        def mut(metric):
+            metric["concept"] = "gmv-revenue"
+        vocab = write_vocab(
+            tmp_path,
+            {"gmv-revenue": copy.deepcopy(CONCEPT_PARENT), "net-revenue": copy.deepcopy(CONCEPT_VARIANT)},
+            {"b2b_value_skew": copy.deepcopy(CONSTRAINT_B2B)},
+        )
+        errors = validate_vocabulary(vocab, base_semantic(tmp_path, metric_mut=mut), SCHEMA_PY)
+        assert any("back-pointer" in e for e in errors)
+
+    def test_metric_concept_must_exist_in_vocabulary(self, tmp_path):
+        def mut(metric):
+            metric["concept"] = "no-such-concept"
+        vocab = write_vocab(
+            tmp_path,
+            {"gmv-revenue": copy.deepcopy(CONCEPT_PARENT), "net-revenue": copy.deepcopy(CONCEPT_VARIANT)},
+            {"b2b_value_skew": copy.deepcopy(CONSTRAINT_B2B)},
+        )
+        errors = validate_vocabulary(vocab, base_semantic(tmp_path, metric_mut=mut), SCHEMA_PY)
+        assert any("no-such-concept" in e for e in errors)
+
     def test_variant_of_must_resolve(self, tmp_path):
         variant = copy.deepcopy(CONCEPT_VARIANT)
         variant["variant_of"] = "ghost-parent"

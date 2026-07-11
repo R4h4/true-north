@@ -82,18 +82,21 @@ def validate_vocabulary(vocab_dir: Path, semantic_dir: Path, schema_py: Path) ->
             # variant must have measured_by resolving to a semantic metric
             if not measured_by:
                 errors.append(f"concept {stem}: variant requires measured_by")
-            elif measured_by not in metric_keys:
+
+        # measured_by resolution + 1:1 ownership applies to variants AND
+        # standalone concepts alike (parents are rejected below).
+        if measured_by:
+            if measured_by not in metric_keys:
                 errors.append(
                     f"concept {stem}: measured_by '{measured_by}' does not resolve to a semantic metric"
                 )
+            elif measured_by in measured_by_owner:
+                errors.append(
+                    f"concept {stem}: measured_by '{measured_by}' already claimed by "
+                    f"'{measured_by_owner[measured_by]}' (must be 1:1)"
+                )
             else:
-                if measured_by in measured_by_owner:
-                    errors.append(
-                        f"concept {stem}: measured_by '{measured_by}' already claimed by "
-                        f"'{measured_by_owner[measured_by]}' (must be 1:1)"
-                    )
-                else:
-                    measured_by_owner[measured_by] = stem
+                measured_by_owner[measured_by] = stem
 
         if is_parent and measured_by:
             errors.append(
@@ -114,6 +117,24 @@ def validate_vocabulary(vocab_dir: Path, semantic_dir: Path, schema_py: Path) ->
                 )
             else:
                 seen_alias.setdefault(low, stem)
+
+    # --- Cross-layer back-pointer ----------------------------------------
+    # Each metric's `concept:` must name the vocabulary concept that claims it
+    # via measured_by (field presence itself is the semantic validator's job).
+    for path in sorted((semantic_dir / "metrics").glob("*.yml")):
+        metric = yaml.safe_load(path.read_text()) or {}
+        concept_key = metric.get("concept")
+        if not concept_key:
+            continue
+        if concept_key not in concepts:
+            errors.append(
+                f"metric {path.stem}: concept '{concept_key}' does not exist in the vocabulary"
+            )
+        elif measured_by_owner.get(path.stem) != concept_key:
+            errors.append(
+                f"metric {path.stem}: concept back-pointer '{concept_key}' != measured_by "
+                f"owner '{measured_by_owner.get(path.stem)}'"
+            )
 
     # --- Constraints ------------------------------------------------------
     for stem, constraint in constraints.items():
