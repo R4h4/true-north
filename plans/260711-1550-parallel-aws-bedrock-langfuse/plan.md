@@ -67,8 +67,8 @@ observability.
 | Phase | Name | Owner | Status |
 |-------|------|-------|--------|
 | 1 | [Interface Contract & Workfences](./phase-01-interface-contract-workfences.md) | Joint (day 0) | Pending |
-| 2 | [Stub CLI Fixtures & Conformance Tests](./phase-02-mock-governed-cli-conformance-tests.md) | Phong | Pending |
-| 3 | [Harness Agent: Bedrock + Langfuse](./phase-03-harness-agent-bedrock-langfuse.md) | Phong | Pending |
+| 2 | [Stub CLI Fixtures & Conformance Tests](./phase-02-mock-governed-cli-conformance-tests.md) | Karsten (PR #4) | Pending |
+| 3 | [Harness Agent: GPT-5.5 + Langfuse + Charts](./phase-03-harness-agent-bedrock-langfuse.md) | Phong | Pending |
 | 4 | [Karsten Track: Semantic Layer & Governed Services](./phase-04-karsten-track-semantic-layer-governed-services.md) | Karsten | Pending |
 | 5 | [AWS Environment & Deployment](./phase-05-aws-environment-deployment.md) | Phong | Pending |
 | 6 | [Integration & Demo](./phase-06-integration-demo.md) | Joint | Pending |
@@ -122,7 +122,9 @@ Phase 5A (Phong, day 0-1, parallel)
    (adds marketing-ops; row filter = region South); KG schema + invariants + canonical
    Cypher are contract (§4), served by `tn kg schema`; uv workspace members
    pre-registered. Phong's mock-CLI build is downgraded to conformance runner + replay
-   fixtures (phase 2). Open in PR #2 review: stub ownership, warning-code set.
+   fixtures (phase 2). Stub ownership since resolved: Karsten ships it (PR #4, with
+   conformance suite + agent-dev fixtures + docs/USING-TN.md). Still open: warning-code
+   set (closed or extensible).
 7. **GPT-5.5 replaces Claude Sonnet 5** (Phong, 2026-07-11) — simpler setup: no Anthropic
    first-time-use form, GA on Bedrock since June 2026. Consequences absorbed in phases
    3/5: OpenAI SDK + Responses API against the bedrock-mantle endpoint (not boto3
