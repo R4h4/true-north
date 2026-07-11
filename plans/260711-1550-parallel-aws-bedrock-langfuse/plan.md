@@ -39,10 +39,11 @@ observability.
 |---|---|---|
 | LLM | **GPT-5.5 on Bedrock**, model ID `openai.gpt-5.5` (us-east-1/us-east-2 — verify region + exact ID day 0 with `aws bedrock list-foundation-models`) | Chosen 2026-07-11 over Claude Sonnet 5 for setup simplicity: **no Anthropic first-time-use form**, usable same-day. GA on Bedrock since June 2026, 272k context, strong agentic tool use. **Quota risk stays:** generic Bedrock on-demand quotas on fresh accounts — check Service Quotas + request increases day 0. Throttle/blocked fallback: gpt-oss (no form) or Claude Sonnet 5 (form takes days — see Phase 5 risk). |
 | Bedrock API | **OpenAI SDK → Responses API** against the `bedrock-mantle` endpoint (`OPENAI_BASE_URL=https://bedrock-mantle.<region>.api.aws/openai/v1`, auth = Bedrock API key) | GPT-5.5 on Bedrock is served OpenAI-style, not via Converse. Tool loop = Responses-API function calling (`function_call` output items → `function_call_output` inputs). Bonus: the OpenAI SDK path unlocks Langfuse's native OpenAI instrumentation. |
-| Tracing | **Langfuse Cloud free tier** (50k events/mo) + Python SDK v4 | 15-min setup vs ~45-min 6-container self-host stack. With the OpenAI SDK, try **`langfuse.openai` drop-in instrumentation first** (auto-captures generations + token usage); manual `@observe` wrapping remains for tool/agent spans and as fallback if the drop-in balks at the bedrock-mantle base URL. Cost config for `openai.gpt-5.5` still manual in the dashboard. Fallback: self-host on the demo EC2 if hackathon rules demand everything on AWS. |
+| Agent framework | **Strands Agents SDK** (AWS OSS, 1.x) — no hand-rolled loop | Phong's directive (2026-07-11): the harness must be visibly agentic (thoughts, plan, tool choice, follow-up questions in a loop) and we adopt existing components due to time limit. Strands: `@tool` functions, `stream_async` emits reasoning/tool events, hooks, first-class OpenAI provider (custom base_url → bedrock-mantle), first-party Langfuse OTel docs. Fallback: OpenAI Agents SDK. Report: `researcher-260711-1718-GH-3-agentic-harness-framework-report.md`. |
+| Tracing | **Langfuse Cloud free tier** (50k events/mo), fed by **Strands OTel** (`strands-agents[otel]` + `StrandsTelemetry` → `/api/public/otel`) | 15-min setup vs ~45-min 6-container self-host stack. Strands↔Langfuse integration is documented first-party on both sides — replaces the earlier `langfuse.openai` drop-in + manual `@observe` plan. Cost config for `openai.gpt-5.5` still manual in the dashboard. Fallback: self-host on the demo EC2 if hackathon rules demand everything on AWS. |
 | Neo4j | `neo4j:5-community` in Docker (local dev + on demo EC2) | AuraDB Free auto-pauses/deletes and caps size; Docker is identical Cypher, zero surprise. |
 | Deployment | Single EC2 **t3.xlarge** (ap-southeast-1) + docker-compose + IAM instance role | Fits Neo4j + services (+ Langfuse if self-hosted); ~USD 5–7/day, ~50–65 for the week. ECS/App Runner rejected (App Runner in maintenance mode since Apr 2026). |
-| Chat UI | Streamlit (with `st.session_state` for multi-turn), SSH tunnel during dev, **cloudflared quick tunnel** for demo day + a shared passphrase gate in the app | Let's Encrypt refuses `*.compute.amazonaws.com` hostnames, so certbot-on-EC2 is a dead end without a domain; a quick tunnel gives a free HTTPS URL. The passphrase gate stops strangers from playing CEO (`tok-exec-mai`) and burning Bedrock quota — embarrassing for a governance demo. |
+| Chat UI | **Chainlit** (native step tree for thoughts/tool calls, `cl.AskUserMessage` for mid-run follow-up questions, `cl.Plotly` charts, password-auth passphrase gate), SSH tunnel during dev, **cloudflared quick tunnel** for demo day | Chainlit renders the agentic loop (reasoning, tool choice, human-in-the-loop) as built-in primitives — Streamlit's rerun model fights mid-run interaction. Chart format switches Vega-Lite → Plotly JSON accordingly. Let's Encrypt refuses `*.compute.amazonaws.com` hostnames, so certbot-on-EC2 is a dead end without a domain; a quick tunnel gives a free HTTPS URL. The passphrase gate stops strangers from playing CEO (`tok-exec-mai`) and burning Bedrock quota. |
 
 ## Parallel-Work Rules (the actual answer to "don't mess up each other")
 
@@ -68,7 +69,7 @@ observability.
 |-------|------|-------|--------|
 | 1 | [Interface Contract & Workfences](./phase-01-interface-contract-workfences.md) | Joint (day 0) | Pending |
 | 2 | [Stub CLI Fixtures & Conformance Tests](./phase-02-mock-governed-cli-conformance-tests.md) | Karsten (PR #4) | Pending |
-| 3 | [Harness Agent: GPT-5.5 + Langfuse + Charts](./phase-03-harness-agent-bedrock-langfuse.md) | Phong | Pending |
+| 3 | [Harness Agent: Strands + Chainlit on GPT-5.5, Langfuse, Charts](./phase-03-harness-agent-bedrock-langfuse.md) | Phong | Pending |
 | 4 | [Karsten Track: Semantic Layer & Governed Services](./phase-04-karsten-track-semantic-layer-governed-services.md) | Karsten | Pending |
 | 5 | [AWS Environment & Deployment](./phase-05-aws-environment-deployment.md) | Phong | Pending |
 | 6 | [Integration & Demo](./phase-06-integration-demo.md) | Joint | Pending |
@@ -132,3 +133,11 @@ Phase 5A (Phong, day 0-1, parallel)
    ap-southeast-1 — cross-region API latency is fine for a demo), Langfuse native OpenAI
    instrumentation replaces most manual wrapping. Claude notes in the Bedrock research
    report are retained for the fallback path only.
+8. **Adopt an existing agentic harness, don't build one** (Phong, 2026-07-11) — the
+   harness must visibly show thoughts, plan, tool selection, knowledge-retrieval
+   location, and ask follow-up questions in a loop until it has enough context to fetch
+   data and build insight reports. Chosen: **Strands Agents SDK** (loop) + **Chainlit**
+   (UI); consequences absorbed in phase 3: no hand-rolled Responses loop, tracing via
+   Strands OTel → Langfuse, charts switch Vega-Lite → Plotly (Chainlit-native), Streamlit
+   replaced. Day-0 verification: bedrock-mantle API surface (Chat Completions vs
+   Responses) for `openai.gpt-5.5` against Strands' OpenAI provider.
