@@ -38,7 +38,7 @@ observability.
 | Decision | Choice | Why |
 |---|---|---|
 | LLM | **GPT-5.5 on Bedrock**, model ID `openai.gpt-5.5` (us-east-1/us-east-2 — verify region + exact ID day 0 with `aws bedrock list-foundation-models`) | Chosen 2026-07-11 over Claude Sonnet 5 for setup simplicity: **no Anthropic first-time-use form**, usable same-day. GA on Bedrock since June 2026, 272k context, strong agentic tool use. **Quota risk stays:** generic Bedrock on-demand quotas on fresh accounts — check Service Quotas + request increases day 0. Throttle/blocked fallback: gpt-oss (no form) or Claude Sonnet 5 (form takes days — see Phase 5 risk). |
-| Bedrock API | **OpenAI SDK → Responses API** against the `bedrock-mantle` endpoint (`OPENAI_BASE_URL=https://bedrock-mantle.<region>.api.aws/openai/v1`, auth = Bedrock API key) | GPT-5.5 on Bedrock is served OpenAI-style, not via Converse. Tool loop = Responses-API function calling (`function_call` output items → `function_call_output` inputs). Bonus: the OpenAI SDK path unlocks Langfuse's native OpenAI instrumentation. |
+| Bedrock API | **Responses API only** via Strands' `OpenAIResponsesModel` (`stateful=False`) against the `bedrock-mantle` endpoint (`OPENAI_BASE_URL=https://bedrock-mantle.<region>.api.aws/openai/v1`, auth = Bedrock API key) | Confirmed 2026-07-11 (Codex review + AWS docs): GPT-5.5/5.4 on Bedrock support **neither Chat Completions nor Converse** — Responses is the only surface, and Strands ships a dedicated Responses provider (`strands-agents[openai]`, `openai>=2.0.0`). Tool loop handled by Strands. |
 | Agent framework | **Strands Agents SDK** (AWS OSS, 1.x) — no hand-rolled loop | Phong's directive (2026-07-11): the harness must be visibly agentic (thoughts, plan, tool choice, follow-up questions in a loop) and we adopt existing components due to time limit. Strands: `@tool` functions, `stream_async` emits reasoning/tool events, hooks, first-class OpenAI provider (custom base_url → bedrock-mantle), first-party Langfuse OTel docs. Fallback: OpenAI Agents SDK. Report: `researcher-260711-1718-GH-3-agentic-harness-framework-report.md`. |
 | Tracing | **Langfuse Cloud free tier** (50k events/mo), fed by **Strands OTel** (`strands-agents[otel]` + `StrandsTelemetry` → `/api/public/otel`) | 15-min setup vs ~45-min 6-container self-host stack. Strands↔Langfuse integration is documented first-party on both sides — replaces the earlier `langfuse.openai` drop-in + manual `@observe` plan. Cost config for `openai.gpt-5.5` still manual in the dashboard. Fallback: self-host on the demo EC2 if hackathon rules demand everything on AWS. |
 | Neo4j | `neo4j:5-community` in Docker (local dev + on demo EC2) | AuraDB Free auto-pauses/deletes and caps size; Docker is identical Cypher, zero surprise. |
@@ -77,7 +77,8 @@ observability.
 ## Dependencies
 
 - Phase 1 blocks everything (it IS the parallelization enabler; timebox: half a day).
-- Phong track: 1 → 2 → 3; Karsten track: 1 → 4. **2+3 run in parallel with 4.**
+- Phong track: 1 → 3; Karsten track: 1 → 2 (stub, PR #4) → 4. **3 runs in parallel
+  with 2+4**, gated only on PR #4 merging (phase-3 fixture gate).
 - Phase 5 milestone A (Bedrock access, Langfuse keys, local Neo4j) happens day 0–1 in
   parallel with Phase 1; milestone B (EC2 deploy) any time before Phase 6.
 - **Hard mid-build gate:** the day Karsten's real CLI first passes conformance, run a
@@ -88,9 +89,10 @@ observability.
 
 ```
 Day 0        Day 1-4                     Day 5      Day 6
-Phase 1 ──┬── Phase 2 ── Phase 3 ────────┬─ Phase 5B ─ Phase 6
-(joint)   │   (Phong)    (Phong)         │  (Phong)    (joint)
-          └── Phase 4 (Karsten) ─────────┘
+Phase 1 ──┬── Phase 3 (Phong) ───────────┬─ Phase 5B ─ Phase 6
+(joint)   │                              │  (Phong)    (joint)
+          └── Phase 2 ── Phase 4 ────────┘
+              (Karsten, PR #4) (Karsten)
 Phase 5A (Phong, day 0-1, parallel)
 [demo-data plan runs in parallel, feeds Phase 4 testing + Phase 6]
 ```
@@ -138,9 +140,9 @@ Phase 5A (Phong, day 0-1, parallel)
    location, and ask follow-up questions in a loop until it has enough context to fetch
    data and build insight reports. Chosen: **Strands Agents SDK** (loop); consequences
    absorbed in phase 3: no hand-rolled Responses loop, tracing via Strands OTel →
-   Langfuse, charts in Plotly, Streamlit replaced. Day-0 verification: bedrock-mantle
-   API surface (Chat Completions vs Responses) for `openai.gpt-5.5` against Strands'
-   OpenAI provider.
+   Langfuse, charts in Plotly, Streamlit replaced. The Chat-vs-Responses question is
+   **resolved** (2026-07-11, Codex review): GPT-5.5 is Responses-only on Bedrock →
+   Strands `OpenAIResponsesModel`; day-0 smoke now only confirms model id + base_url.
 9. **Open demo + live KG-context side panel** (Phong, 2026-07-11) — no passphrase,
    anyone with the URL can try it (trade-off accepted: quota burn risk, mitigated by
    `MAX_TURNS_PER_SESSION` + unlisted cloudflared URL). The side panel renders the

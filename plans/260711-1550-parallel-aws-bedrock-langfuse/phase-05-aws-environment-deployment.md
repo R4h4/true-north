@@ -71,13 +71,14 @@ EC2 t3.xlarge (ap-southeast-1, Ubuntu 22.04, Elastic IP,
 2. Mint a **Bedrock API key** (Bedrock console → API keys) backed by an identity whose
    policy is bedrock-invocation-only; set `OPENAI_API_KEY` +
    `OPENAI_BASE_URL=https://bedrock-mantle.<region>.api.aws/openai/v1` on both laptops.
-3. Smoke test: **determine which API surface bedrock-mantle exposes for `openai.gpt-5.5`
-   (Chat Completions vs Responses)** — this decides the Strands model-provider config
-   (phase 3 step 1's blocker). Then one tool-use round-trip through a minimal Strands
-   agent (`OpenAIModel(client_args={base_url, api_key})`); if Chat Completions is absent,
-   validate the LiteLLM-provider fallback in the same sitting. **Same session:** check
-   Service Quotas for OpenAI-model RPM/TPM — fresh-account quotas can sit low; request
-   increases immediately (they take days).
+3. Smoke test: one tool-use round-trip through a minimal Strands agent on
+   `OpenAIResponsesModel(client_args={base_url, api_key}, stateful=False)` — GPT-5.5 is
+   **Responses-only** on Bedrock (confirmed 2026-07-11), so this just validates the
+   Bedrock API key, exact model id, and base_url path (note: GPT-5.5 serves on the
+   bedrock-mantle `openai/v1/responses` path — confirm the SDK's base_url composes to
+   it). LiteLLM's bedrock-mantle provider is the fallback if the path misbehaves.
+   **Same session:** check Service Quotas for OpenAI-model RPM/TPM — fresh-account
+   quotas can sit low; request increases immediately (they take days).
 4. Langfuse: per the validation decision — Cloud: create org/project, issue keys to both;
    self-host: defer to 5B, use Cloud keys meanwhile (traces are throwaway).
 5. Local Neo4j one-liner documented for Karsten:
