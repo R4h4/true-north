@@ -113,6 +113,9 @@ export function KgPanel({ graph }: { graph?: KgGraph }) {
                   <text
                     x={`${(a.x + b.x) / 2}%`}
                     y={`${(a.y + b.y) / 2}%`}
+                    /* same-row edges: the midpoint sits between the two cards,
+                       which paint over the SVG - lift the label above them */
+                    dy={a.y === b.y ? -30 : 0}
                     textAnchor="middle"
                     fontSize={9.5}
                     letterSpacing="0.05em"
