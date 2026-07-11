@@ -10,19 +10,21 @@ The demo warehouse models **Phong Vũ** (phongvu.vn), a Vietnamese consumer-elec
         ┌─────────────────────────────────────────────────┐
         │                 harness  (Phong)                │
         │           LLM agent · chat interface            │
-        └───────────┬─────────────────────────┬───────────┘
-                    │ Cypher                  │ governed query CLI
-                    │                         │ (auth token → user → permissions)
-        ┌───────────▼───────────┐  ┌──────────▼───────────┐
-        │    knowledge-graph    │  │      governance      │
-        │  Neo4j: glossary +    │  │  row-level security  │
-        │  business knowledge;  │  │  column anonymization│
-        │  ingests metrics/dims │  │  PII tokenization    │
-        │  incl. permission     │  │  table access        │
-        │  metadata             │  │                      │
-        └───────────┬───────────┘  └──────────┬───────────┘
-                    │ ingests semantic layer  │ queries
-        ┌───────────▼─────────────────────────▼───────────┐
+        └────────────────────────┬────────────────────────┘
+                                 │ governed CLI
+                                 │ (auth token → user → permissions)
+                 ┌───────────────┴─────────────┐
+                 │ Cypher                      │ data queries (DSL)
+        ┌────────▼──────────────┐   ┌──────────▼───────────┐
+        │    knowledge-graph    │   │      governance      │
+        │  Neo4j: glossary +    │   │  row-level security  │
+        │  business knowledge;  │   │  column anonymization│
+        │  ingests metrics/dims │   │  PII tokenization    │
+        │  incl. permission     │   │  table access        │
+        │  metadata             │   │                      │
+        └────────┬──────────────┘   └──────────┬───────────┘
+                 │ ingests semantic layer      │ queries
+        ┌────────▼────────────────────────────▼────────────┐
         │                     source                       │
         │   DuckDB warehouse mock · semantic layer with    │
         │   governed metrics & dimensions · DSL/CLI        │
@@ -35,10 +37,10 @@ The demo warehouse models **Phong Vũ** (phongvu.vn), a Vietnamese consumer-elec
 |---|---|---|---|
 | `source/` | Karsten | Mocked data warehouse (DuckDB) + semantic layer providing governed metrics & dimensions | DSL / CLI |
 | `governance/` | Karsten | Row-level access security, column-level anonymization, PII tokenization, table access — applied per user | Authenticated query CLI (auth token resolves the user and their permissions) |
-| `knowledge-graph/` | Karsten | Glossary + business knowledge; automatically ingests everything defined in the semantic layer (metrics, dimensions) **including permission metadata**, so answers can say "this metric exists but you don't have access" | Cypher (Neo4j) |
-| `harness/` | Phong | The agent on top: queries the knowledge graph for context, then the warehouse through the governed CLI | Chat |
+| `knowledge-graph/` | Karsten | Glossary + business knowledge; automatically ingests everything defined in the semantic layer (metrics, dimensions) **including permission metadata**, so answers can say "this metric exists but you don't have access" | Cypher, via the governed CLI |
+| `harness/` | Phong | The agent on top: queries the knowledge graph for context, then the warehouse — both through the governed CLI | Chat |
 
-The two interfaces the harness consumes are the contract: **Cypher over the knowledge graph** (permission-aware answers) and the **governed query CLI** (auth-token-scoped data access). Exact interface specs are the next step — nothing beyond `source/` is implemented yet.
+The contract the harness consumes is a **single governed CLI**: every call carries an auth token that resolves to a user, and it fronts both surfaces — **Cypher against the knowledge graph** (the token lets permission metadata be injected into graph answers) and **data queries against the warehouse** (the token scopes row/column/table access). Exact interface specs are the next step — nothing beyond `source/` is implemented yet.
 
 ## Working in the repo
 
