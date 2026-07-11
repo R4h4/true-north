@@ -81,15 +81,42 @@ body {
   padding: 3px 10px;
 }
 
+/* Right-side topbar controls: data-source switcher + persona picker */
+.topbar-controls {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 /* Persona picker: segmented control on the light topbar */
 .persona-picker {
-  margin-left: auto;
   display: flex;
   gap: 2px;
   background: #eef0f7;
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 2px;
+}
+
+/* Data-source switcher: same segmented control, with a status dot that goes
+   accent on the active tenant */
+.dataset-picker button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dataset-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--border-strong);
+  transition: background 150ms ease;
+}
+
+.dataset-picker button.active .dataset-dot {
+  background: var(--accent);
 }
 
 .persona-picker button {
