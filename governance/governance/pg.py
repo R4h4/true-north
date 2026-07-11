@@ -17,8 +17,10 @@ Nothing in here is contractual — CONTRACT.md and the goldens are untouched.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
+import sys
 from pathlib import Path
 
 import psycopg
@@ -33,9 +35,24 @@ USERS_YAML = REPO_ROOT / "governance" / "fixtures" / "users.yaml"
 
 DEFAULT_DSN = "postgresql://truenorth:truenorth@localhost:5433/truenorth"
 
+# policy_config key under which the loader records the authored-YAML hash so
+# load_policy_from_db() can detect an edited-but-not-reloaded users.yaml.
+_YAML_HASH_KEY = "users_yaml_sha256"
+
 
 def resolve_dsn(dsn: str | None = None) -> str:
     return dsn or os.environ.get("TN_PG_DSN") or DEFAULT_DSN
+
+
+def authored_users_yaml() -> Path:
+    """The authored users.yaml path — overridable via TN_USERS_YAML.
+
+    In a deployed runtime the authored file may be absent (the Postgres store
+    IS the policy there); the staleness check treats a missing file as "no
+    authored truth to compare against" and stays silent.
+    """
+    override = os.environ.get("TN_USERS_YAML")
+    return Path(override) if override else USERS_YAML
 
 
 # --- schema migrations ------------------------------------------------------
@@ -80,10 +97,12 @@ def load_policy_to_db(dsn: str | None = None, users_yaml: Path = USERS_YAML) -> 
     Upserts roles/users/config and prunes any rows no longer authored, so
     running it twice (or after an edit) converges the store to the YAML.
     """
-    doc = yaml.safe_load(Path(users_yaml).read_text())
+    yaml_bytes = Path(users_yaml).read_bytes()
+    doc = yaml.safe_load(yaml_bytes)
     roles = doc.get("roles") or {}
     users = doc.get("users") or []
     tokenization = doc.get("tokenization") or {}
+    yaml_sha256 = hashlib.sha256(yaml_bytes).hexdigest()
 
     migrate(dsn)
 
@@ -128,6 +147,14 @@ def load_policy_to_db(dsn: str | None = None, users_yaml: Path = USERS_YAML) -> 
             (Jsonb(tokenization),),
         )
 
+        conn.execute(
+            """
+            INSERT INTO policy_config (key, value) VALUES (%s, %s)
+            ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+            """,
+            (_YAML_HASH_KEY, Jsonb(yaml_sha256)),
+        )
+
         # prune anything no longer authored (users before roles, for the FK)
         authored_users = [u["user_id"] for u in users]
         conn.execute(
@@ -141,6 +168,29 @@ def load_policy_to_db(dsn: str | None = None, users_yaml: Path = USERS_YAML) -> 
 
 
 # --- runtime: Postgres -> Policy --------------------------------------------
+
+
+def _warn_if_stale(stored_yaml_sha256: str | None) -> None:
+    """Warn ONCE on stderr if the authored users.yaml has changed since the last
+    load. Advisory only: never raises, never touches stdout or the exit code, and
+    stays silent when there is nothing to compare (no stored hash, or no authored
+    file on disk — the deployed-runtime case where the store IS the policy)."""
+    try:
+        if not stored_yaml_sha256:
+            return
+        yaml_path = authored_users_yaml()
+        if not yaml_path.exists():
+            return
+        current = hashlib.sha256(yaml_path.read_bytes()).hexdigest()
+        if current == stored_yaml_sha256:
+            return
+        print(
+            "tn: warning: runtime policy store is stale — authored users.yaml has "
+            "changed since the last load; run: uv run python -m governance.pg",
+            file=sys.stderr,
+        )
+    except Exception:  # noqa: BLE001 — staleness detection is advisory, never a gate
+        pass
 
 
 def load_policy_from_db(dsn: str | None = None, semantic=None) -> Policy:
@@ -173,10 +223,16 @@ def load_policy_from_db(dsn: str | None = None, semantic=None) -> Policy:
                 attributes=attributes or {},
             )
 
-        cfg = conn.execute(
-            "SELECT value FROM policy_config WHERE key = 'tokenization'"
-        ).fetchone()
-        tokenization = cfg[0] if cfg else {}
+        cfg_rows = dict(
+            conn.execute(
+                "SELECT key, value FROM policy_config WHERE key IN (%s, %s)",
+                ("tokenization", _YAML_HASH_KEY),
+            ).fetchall()
+        )
+        tokenization = cfg_rows.get("tokenization") or {}
+        stored_yaml_sha256 = cfg_rows.get(_YAML_HASH_KEY)
+
+    _warn_if_stale(stored_yaml_sha256)
 
     return Policy(
         personas=personas,
