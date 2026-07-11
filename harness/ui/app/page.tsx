@@ -32,6 +32,21 @@ const PERSONAS = [
   { id: "binh", label: "Bình · Analyst" },
 ];
 
+// Compass-in-hexagon brand mark, drawn in the brand green.
+function BrandMark() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 2.5 20.2 7.25v9.5L12 21.5 3.8 16.75v-9.5L12 2.5Z"
+        stroke="#259b6c"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path d="M12 6.5 14 12l-2 5.5L10 12l2-5.5Z" fill="#259b6c" />
+    </svg>
+  );
+}
+
 function Workbench() {
   // Shared state streamed by the backend (STATE_SNAPSHOT events).
   const { state } = useCoAgent<{ kg_context?: KgGraph }>({ name: "true-north" });
@@ -89,7 +104,7 @@ function Workbench() {
       </div>
       <div className="kg-pane">
         <h2>What the agent knows so far</h2>
-        <p className="hint">Live knowledge-graph context · 🔒 = exists but not accessible to your role</p>
+        <p className="hint">Live knowledge-graph context · locked = exists but not accessible to your role</p>
         <div className="kg-canvas">
           <KgPanel graph={state?.kg_context} />
         </div>
@@ -103,8 +118,11 @@ export default function Page() {
   return (
     <div className="shell">
       <div className="topbar">
-        <h1>True North</h1>
-        <span className="tag">governed BI · every answer via the tn contract</span>
+        <div className="brand">
+          <BrandMark />
+          <h1>True North</h1>
+        </div>
+        <span className="tag">Governed BI · tn contract</span>
         <div className="persona-picker">
           {PERSONAS.map((p) => (
             <button
