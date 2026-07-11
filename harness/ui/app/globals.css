@@ -64,14 +64,14 @@ body {
 }
 
 .topbar h1 {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--ink-strong);
 }
 
 .topbar .tag {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--accent-dark);
   background: var(--accent-tint);
@@ -97,7 +97,7 @@ body {
   color: var(--ink-secondary);
   border-radius: 6px;
   padding: 5px 12px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
@@ -249,14 +249,14 @@ body {
 }
 
 .hero-greeting h3 {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
   letter-spacing: -0.03em;
   color: var(--ink-strong);
 }
 
 .hero-greeting p {
-  font-size: 13px;
+  font-size: 14.5px;
   line-height: 1.55;
   color: var(--ink-secondary);
   max-width: 400px;
@@ -281,7 +281,7 @@ body {
   border: 1px solid var(--border);
   border-radius: 13px;
   padding: 9px 12px 9px 16px;
-  font-size: 12.5px;
+  font-size: 13.5px;
   color: var(--ink-secondary);
 }
 
@@ -342,7 +342,7 @@ body {
   padding: 6px 10px;
   border-radius: 10px;
   font-family: inherit;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--ink-secondary);
   cursor: pointer;
   transition: color 150ms ease, background 150ms ease;
@@ -374,12 +374,13 @@ body {
   color: #2c2350;
   border-radius: 12px 12px 3px 12px;
   max-width: 78%;
+  font-size: 15px;
   font-weight: 450;
 }
 
 /* Assistant prose: measured line length, calm rhythm */
 .chat-pane .copilotKitMessage.copilotKitAssistantMessage {
-  font-size: 13.5px;
+  font-size: 15px;
   line-height: 1.62;
   color: var(--ink);
   max-width: 640px;
@@ -395,6 +396,10 @@ body {
 .chat-pane .copilotKitInput:focus-within {
   border-color: var(--accent);
   box-shadow: 0 0 0 3.5px rgba(124, 92, 240, 0.22);
+}
+
+.chat-pane .copilotKitInput textarea {
+  font-size: 15px;
 }
 
 /* Hide CopilotKit branding: the dev-inspector floating button (custom element)
@@ -428,7 +433,7 @@ cpk-web-inspector {
   background: transparent;
   padding: 4px 2px;
   font-family: inherit;
-  font-size: 12.5px;
+  font-size: 13.5px;
   font-weight: 500;
   color: var(--muted);
   cursor: pointer;
@@ -454,7 +459,7 @@ cpk-web-inspector {
   margin: 2px 0 4px 4px;
   padding: 2px 4px 2px 12px;
   border-left: 2px solid var(--border-strong);
-  font-size: 12.5px;
+  font-size: 13.5px;
   line-height: 1.6;
   color: var(--muted);
   white-space: pre-wrap;
@@ -469,7 +474,7 @@ cpk-web-inspector {
 }
 
 .kg-head h2 {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--muted);
   text-transform: uppercase;
@@ -478,7 +483,7 @@ cpk-web-inspector {
 
 /* Access-posture badge: the governed policy made visible per persona */
 .kg-badge {
-  font-size: 10.5px;
+  font-size: 11.5px;
   font-weight: 600;
   border-radius: 99px;
   padding: 2px 9px;
@@ -505,7 +510,7 @@ cpk-web-inspector {
 }
 
 .kg-pane .hint {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ink-secondary);
   line-height: 1.5;
   padding: 0 16px 10px;
@@ -547,7 +552,7 @@ cpk-web-inspector {
 }
 
 .kg-node-type {
-  font-size: 8.5px;
+  font-size: 9.5px;
   font-weight: 700;
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -570,7 +575,7 @@ cpk-web-inspector {
 }
 
 .kg-empty p {
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.55;
   color: var(--muted);
   max-width: 220px;
@@ -582,7 +587,7 @@ cpk-web-inspector {
   gap: 10px 14px;
   padding: 9px 16px;
   border-top: 1px solid var(--border);
-  font-size: 10.5px;
+  font-size: 11.5px;
   color: var(--ink-secondary);
 }
 
@@ -625,7 +630,7 @@ cpk-web-inspector {
   padding: 7px 12px;
   border-top: 1px solid var(--border);
   background: var(--surface-subtle);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ink-secondary);
 }
 
@@ -637,7 +642,7 @@ cpk-web-inspector {
   gap: 8px;
   padding: 3px 0 3px 10px;
   border-left: 2px solid var(--border);
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ink-secondary);
 }
 
@@ -648,7 +653,7 @@ cpk-web-inspector {
 
 .tool-step .step-args {
   font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -694,13 +699,13 @@ cpk-web-inspector {
 }
 
 .kpi-label {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--ink-secondary);
 }
 
 .kpi-value {
-  font-size: 30px;
+  font-size: 32px;
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--ink);
@@ -708,7 +713,7 @@ cpk-web-inspector {
 }
 
 .kpi-sub {
-  font-size: 11.5px;
+  font-size: 12.5px;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
@@ -723,7 +728,7 @@ cpk-web-inspector {
 }
 
 .ask-user-card p {
-  font-size: 13.5px;
+  font-size: 15px;
   font-weight: 500;
   line-height: 1.5;
   margin-bottom: 10px;
@@ -739,7 +744,7 @@ cpk-web-inspector {
   border: 1px solid var(--border-strong);
   background: var(--surface);
   color: var(--ink);
-  font-size: 13px;
+  font-size: 14px;
   font-family: inherit;
   line-height: 1.45;
   cursor: pointer;
@@ -758,7 +763,7 @@ cpk-web-inspector {
 
 .ask-user-card .answered {
   display: inline-block;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--accent-dark);
   background: var(--accent-tint);

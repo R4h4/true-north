@@ -193,7 +193,11 @@ function Workbench({ persona }: { persona: string }) {
       <div className={asked ? "chat-pane" : "chat-pane empty"}>
         {!asked && <EmptyStateGreeting />}
         <CopilotChat
-          labels={{ title: "True North", initial: "" }}
+          labels={{
+            title: "True North",
+            initial: "",
+            placeholder: "Ask about revenue, margin, retention — anything in your data…",
+          }}
           AssistantMessage={AssistantMessageWithThoughts}
           RenderSuggestionsList={SuggestionsPanel}
           onSubmitMessage={() => setAsked(true)}

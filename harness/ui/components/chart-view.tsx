@@ -98,7 +98,7 @@ function HBarChart({ chart }: { chart: ChartPayload }) {
   return (
     <div className="chart-card">
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={chart.title}>
-        <text x={16} y={20} fontSize={13.5} fontWeight={600} fill={INK}>
+        <text x={16} y={20} fontSize={14.5} fontWeight={600} fill={INK}>
           {chart.title}
         </text>
         <line x1={xPos(0)} x2={xPos(0)} y1={PAD.top - 6} y2={H - PAD.bottom} stroke={ZERO} strokeWidth={1} />
@@ -109,14 +109,14 @@ function HBarChart({ chart }: { chart: ChartPayload }) {
           const bw = Math.abs(xPos(p.y) - xPos(0));
           return (
             <g key={p.x}>
-              <text x={PAD.left - 8} y={y + ROW_H / 2 + 4} fontSize={11} fill={INK} textAnchor="end">
+              <text x={PAD.left - 8} y={y + ROW_H / 2 + 4} fontSize={12} fill={INK} textAnchor="end">
                 {truncate(p.x, 18)}
               </text>
               <rect x={x0} y={y} width={Math.max(bw, 1)} height={ROW_H} rx={3} fill={neg ? RED : NAVY} />
               <text
                 x={neg ? x0 - 6 : x0 + bw + 6}
                 y={y + ROW_H / 2 + 4}
-                fontSize={11}
+                fontSize={12}
                 fontWeight={500}
                 fill={neg ? RED : INK}
                 textAnchor={neg ? "end" : "start"}
@@ -147,13 +147,13 @@ function XYChart({ chart }: { chart: ChartPayload }) {
   return (
     <div className="chart-card">
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={chart.title}>
-        <text x={PAD.left} y={20} fontSize={13.5} fontWeight={600} fill={INK}>
+        <text x={PAD.left} y={20} fontSize={14.5} fontWeight={600} fill={INK}>
           {chart.title}
         </text>
         {ticks.map((t, i) => (
           <g key={i}>
             <line x1={PAD.left} x2={W - PAD.right} y1={yPos(t)} y2={yPos(t)} stroke={GRID} strokeWidth={1} />
-            <text x={PAD.left - 8} y={yPos(t) + 4} fontSize={10} fill={MUTED} textAnchor="end">
+            <text x={PAD.left - 8} y={yPos(t) + 4} fontSize={11} fill={MUTED} textAnchor="end">
               {formatY(t, chart.y_format)}
             </text>
           </g>
@@ -174,7 +174,7 @@ function XYChart({ chart }: { chart: ChartPayload }) {
                 <text
                   x={x + bw / 2}
                   y={neg ? yPos(p.y) + 14 : yPos(p.y) - 6}
-                  fontSize={11}
+                  fontSize={12}
                   fontWeight={500}
                   fill={neg ? RED : INK}
                   textAnchor="middle"

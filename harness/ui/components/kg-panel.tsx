@@ -18,11 +18,11 @@ const BAND_ORDER = ["Concept", "Metric", "Dimension", "Constraint", "Table"];
 
 const MONO = "var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace";
 const TYPE_STYLES: Record<string, { bg: string; border: string; chip: string; name: CSSProperties }> = {
-  Concept: { bg: "var(--accent-tint)", border: "#dcd2fa", chip: "var(--accent-dark)", name: { fontSize: 11.5, fontWeight: 600, color: "var(--accent-dark)" } },
-  Metric: { bg: "var(--surface)", border: "var(--border-strong)", chip: "var(--navy)", name: { fontSize: 11, fontFamily: MONO, color: "var(--navy)", fontWeight: 500 } },
-  Dimension: { bg: "var(--blue-tint)", border: "#cfe0f5", chip: "#3b5a8a", name: { fontSize: 11, fontFamily: MONO, color: "#21324e" } },
-  Constraint: { bg: "#fdf6e3", border: "#ecd9b0", chip: "var(--amber)", name: { fontSize: 11, color: "var(--amber)", fontWeight: 500 } },
-  Table: { bg: "var(--surface-subtle)", border: "var(--border-strong)", chip: "var(--muted)", name: { fontSize: 11, fontFamily: MONO, color: "var(--ink-secondary)" } },
+  Concept: { bg: "var(--accent-tint)", border: "#dcd2fa", chip: "var(--accent-dark)", name: { fontSize: 12.5, fontWeight: 600, color: "var(--accent-dark)" } },
+  Metric: { bg: "var(--surface)", border: "var(--border-strong)", chip: "var(--navy)", name: { fontSize: 12, fontFamily: MONO, color: "var(--navy)", fontWeight: 500 } },
+  Dimension: { bg: "var(--blue-tint)", border: "#cfe0f5", chip: "#3b5a8a", name: { fontSize: 12, fontFamily: MONO, color: "#21324e" } },
+  Constraint: { bg: "#fdf6e3", border: "#ecd9b0", chip: "var(--amber)", name: { fontSize: 12, color: "var(--amber)", fontWeight: 500 } },
+  Table: { bg: "var(--surface-subtle)", border: "var(--border-strong)", chip: "var(--muted)", name: { fontSize: 12, fontFamily: MONO, color: "var(--ink-secondary)" } },
 };
 const FALLBACK_STYLE = TYPE_STYLES.Table;
 
@@ -110,7 +110,7 @@ export function KgPanel({ graph }: { graph?: KgGraph }) {
                     x={`${(a.x + b.x) / 2}%`}
                     y={`${(a.y + b.y) / 2}%`}
                     textAnchor="middle"
-                    fontSize={8.5}
+                    fontSize={9.5}
                     letterSpacing="0.05em"
                     fill="var(--muted)"
                     stroke="var(--surface-subtle)"
