@@ -80,4 +80,43 @@ def merge_envelope(graph: dict, envelope: Any) -> dict:
                     if edge not in known_edges:
                         known_edges.add(edge)
                         graph["edges"].append({"source": src, "target": dst, "label": rel})
+    return _prune_to_decision_path(graph)
+
+
+def _prune_to_decision_path(graph: dict) -> dict:
+    """Scratchpad semantics: once the agent commits to a metric (loads its
+    context - dims/caveats/tables edges appear), drop the branches it is NOT
+    using. Before any commit, everything stays visible: the ambiguity itself
+    is the decision in progress. Locked nodes always stay - a denied metric is
+    an explicit decision the user should see."""
+    detail_rels = {"HAS_DIMENSION", "CONSTRAINS", "COMPUTED_FROM"}
+    chosen = {
+        e["source"] if e["label"] != "CONSTRAINS" else e["target"]
+        for e in graph["edges"]
+        if e["label"] in detail_rels
+    }
+    if not chosen:
+        return graph
+
+    keep = set(chosen) | {n["id"] for n in graph["nodes"] if n["locked"]}
+    # Direct neighbors of chosen metrics: dims, caveats, tables, and the
+    # variant Concept measuring it.
+    variants = set()
+    for e in graph["edges"]:
+        if e["source"] in chosen:
+            keep.add(e["target"])
+        if e["target"] in chosen:
+            keep.add(e["source"])
+            if e["label"] == "MEASURED_BY":
+                variants.add(e["source"])
+    # The kept variants' parent Concepts (the user's original term) - but not
+    # the parents' OTHER variants: those are the rejected branches.
+    for e in graph["edges"]:
+        if e["label"] == "VARIANT_OF" and e["source"] in variants:
+            keep.add(e["target"])
+
+    graph["nodes"] = [n for n in graph["nodes"] if n["id"] in keep]
+    graph["edges"] = [
+        e for e in graph["edges"] if e["source"] in keep and e["target"] in keep
+    ]
     return graph
