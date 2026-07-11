@@ -65,8 +65,21 @@ body {
 
 .main {
   display: grid;
-  grid-template-columns: 1fr 420px;
+  grid-template-columns: 1fr minmax(280px, 420px);
   min-height: 0;
+}
+
+/* Narrow panes: stack the KG panel under the chat instead of crushing it */
+@media (max-width: 900px) {
+  .main {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 220px;
+    overflow-y: auto;
+  }
+  .chat-pane {
+    border-right: none;
+    border-bottom: 1px solid #262a36;
+  }
 }
 
 .chat-pane {

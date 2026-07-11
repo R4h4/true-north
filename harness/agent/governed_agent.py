@@ -35,6 +35,8 @@ def build_agent(include_local_ask_user: bool = True) -> Agent:
     registers ask_user as a CopilotKit action and the adapter proxies it to
     the model, pausing in the browser instead of in Python.
     """
+    # Fail-fast health check only - the agent fetches the schema itself via
+    # get_kg_schema as its first tool call, so the acquisition is visible.
     schema = kg_schema()
     if not schema.get("ok"):
         raise RuntimeError(f"tn kg schema failed at bootstrap: {schema.get('error')}")
@@ -42,7 +44,7 @@ def build_agent(include_local_ask_user: bool = True) -> Agent:
     return Agent(
         model=build_model(),
         tools=tools,
-        system_prompt=build_system_prompt(schema),
+        system_prompt=build_system_prompt(),
     )
 
 

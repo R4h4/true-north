@@ -197,7 +197,27 @@ def kg_schema() -> dict:
     return run_tn(["kg", "schema"])
 
 
+@tool
+def get_kg_schema() -> dict:
+    """Call this FIRST in every new conversation, before any other tool: it
+    returns the knowledge graph's node labels, relationship types, and
+    invariants - the map of what can be resolved and queried. You do not know
+    the graph shape until you call it."""
+    try:
+        cache = _run_cache.get()
+    except LookupError:
+        cache = {}
+    if "__kg_schema__" in cache:
+        cached = dict(cache["__kg_schema__"])
+        cached["_note"] = "schema already loaded this turn - do not call again"
+        return cached
+    envelope = kg_schema()
+    cache["__kg_schema__"] = envelope
+    return envelope
+
+
 GOVERNED_TOOLS = [
+    get_kg_schema,
     resolve_term,
     get_metric_context,
     check_metric_access,
