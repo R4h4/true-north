@@ -37,3 +37,4 @@ Derivation rules (implemented in the compiler, asserted by the cross-layer check
 - **Dimension denial**: dimension's `source` column masked for the role → `ACCESS_DENIED_DIMENSION`.
 - **KG `_access`**: `Metric`/`Table`/`Dimension` nodes get `readable` (+ `reason` when false) from the same derivation; `CAN_READ`/`CAN_COMPUTE` edges are its positive image.
 - **Disclosure**: every row filter, tokenization, or transform that touched a query appears as a typed `applied_permissions` object (CONTRACT §1) — disclosed, never silent.
+- **KG-surface disclosure**: `tn kg query` discloses only the masked/banded columns on the tables the returned governed nodes resolve to — these explain the `_access` annotations; row filters and tokenization are not disclosed because a graph query returns no row data.
