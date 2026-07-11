@@ -37,9 +37,9 @@ observability.
 
 | Decision | Choice | Why |
 |---|---|---|
-| LLM | Claude Sonnet 5 via Bedrock global inference profile `global.anthropic.claude-sonnet-5` — **verify exact ID day 0** with `aws bedrock list-foundation-models` (red team caught a fabricated ID in the research report) | Best cost/latency/tool-use balance (~$3/$15 per MTok); ap-southeast-1 has no in-region Claude, so the global profile is mandatory. ~$0.01/query. **Quota risk:** fresh accounts can have near-zero Claude quotas and Sonnet 5's always-on reasoning burns output quota — check Service Quotas + request increases day 0; Haiku 4.5 is the throttle fallback. |
-| Bedrock API | boto3 `bedrock-runtime` **Converse API** | Tool use requires Converse (not legacy InvokeModel); no framework overhead; best-documented path. Strands/Anthropic-SDK rejected as overkill/indirect for a 2-tool loop. Sonnet 5 emits `reasoningContent` blocks that must be echoed back verbatim in the tool loop. |
-| Tracing | **Langfuse Cloud free tier** (50k events/mo) + Python SDK v4 | 15-min setup vs ~45-min 6-container self-host stack. No native Bedrock instrumentation exists — manual `@observe` wrapping; token usage from `response["usage"]`, cost config manual. Fallback: self-host docker-compose on the demo EC2 if hackathon rules demand everything on AWS. **← confirm at validation** |
+| LLM | **GPT-5.5 on Bedrock**, model ID `openai.gpt-5.5` (us-east-1/us-east-2 — verify region + exact ID day 0 with `aws bedrock list-foundation-models`) | Chosen 2026-07-11 over Claude Sonnet 5 for setup simplicity: **no Anthropic first-time-use form**, usable same-day. GA on Bedrock since June 2026, 272k context, strong agentic tool use. **Quota risk stays:** generic Bedrock on-demand quotas on fresh accounts — check Service Quotas + request increases day 0. Throttle/blocked fallback: gpt-oss (no form) or Claude Sonnet 5 (form takes days — see Phase 5 risk). |
+| Bedrock API | **OpenAI SDK → Responses API** against the `bedrock-mantle` endpoint (`OPENAI_BASE_URL=https://bedrock-mantle.<region>.api.aws/openai/v1`, auth = Bedrock API key) | GPT-5.5 on Bedrock is served OpenAI-style, not via Converse. Tool loop = Responses-API function calling (`function_call` output items → `function_call_output` inputs). Bonus: the OpenAI SDK path unlocks Langfuse's native OpenAI instrumentation. |
+| Tracing | **Langfuse Cloud free tier** (50k events/mo) + Python SDK v4 | 15-min setup vs ~45-min 6-container self-host stack. With the OpenAI SDK, try **`langfuse.openai` drop-in instrumentation first** (auto-captures generations + token usage); manual `@observe` wrapping remains for tool/agent spans and as fallback if the drop-in balks at the bedrock-mantle base URL. Cost config for `openai.gpt-5.5` still manual in the dashboard. Fallback: self-host on the demo EC2 if hackathon rules demand everything on AWS. |
 | Neo4j | `neo4j:5-community` in Docker (local dev + on demo EC2) | AuraDB Free auto-pauses/deletes and caps size; Docker is identical Cypher, zero surprise. |
 | Deployment | Single EC2 **t3.xlarge** (ap-southeast-1) + docker-compose + IAM instance role | Fits Neo4j + services (+ Langfuse if self-hosted); ~USD 5–7/day, ~50–65 for the week. ECS/App Runner rejected (App Runner in maintenance mode since Apr 2026). |
 | Chat UI | Streamlit (with `st.session_state` for multi-turn), SSH tunnel during dev, **cloudflared quick tunnel** for demo day + a shared passphrase gate in the app | Let's Encrypt refuses `*.compute.amazonaws.com` hostnames, so certbot-on-EC2 is a dead end without a domain; a quick tunnel gives a free HTTPS URL. The passphrase gate stops strangers from playing CEO (`tok-exec-mai`) and burning Bedrock quota — embarrassing for a governance demo. |
@@ -98,8 +98,8 @@ Phase 5A (Phong, day 0-1, parallel)
 
 - [ ] `CONTRACT.md` v0.3 ratified and merged (PR #2) with Phong's divergence positions recorded.
 - [ ] Conformance suite passes against the stub (Phase 2) and later against the real CLI (Phase 4) unchanged.
-- [ ] Harness answers trap questions end-to-end through Bedrock (Sonnet 5 global profile) with every agent step visible as a nested Langfuse trace (session + persona tagged).
-- [ ] Whole stack runs on the EC2 instance via docker-compose; Bedrock reached via instance IAM role (no long-lived keys on the box).
+- [ ] Harness answers trap questions end-to-end through Bedrock (GPT-5.5 via bedrock-mantle) with every agent step visible as a nested Langfuse trace (session + persona tagged).
+- [ ] Whole stack runs on the EC2 instance via docker-compose; Bedrock reached with a **scoped Bedrock API key** (bedrock-only permissions, no general AWS credentials on the box).
 - [ ] Demo: at least 2 personas give different answers to the same question (row-level security visible), and one "metric exists but you lack access" answer sourced from KG permission metadata.
 - [ ] No cross-directory edits without the owner's sign-off during the whole build (spot-check via `git log --stat`).
 
@@ -107,7 +107,7 @@ Phase 5A (Phong, day 0-1, parallel)
 
 1. **Langfuse Cloud** — free tier; EC2 stays t3.xlarge; self-host remains the documented fallback only if organizers object.
 2. **Timeline ~1 week** — day-numbered schedule stands as written.
-3. **Phong's personal/company AWS account** — he controls IAM; Anthropic use-case form + Sonnet 5 quota-increase requests submitted immediately (day 0, before anything else).
+3. **Phong's personal/company AWS account** — he controls IAM; Bedrock quota checks + increase requests submitted immediately (day 0, before anything else).
 4. "Karsen" = Karsten (README spelling) — assumed, not re-confirmed.
 5. **Warehouse surface is a metrics DSL, not raw SQL** (Phong, 2026-07-11) — exposing SQL
    directly to the warehouse is dangerous and defeats the governance story. The agent
@@ -123,3 +123,10 @@ Phase 5A (Phong, day 0-1, parallel)
    Cypher are contract (§4), served by `tn kg schema`; uv workspace members
    pre-registered. Phong's mock-CLI build is downgraded to conformance runner + replay
    fixtures (phase 2). Open in PR #2 review: stub ownership, warning-code set.
+7. **GPT-5.5 replaces Claude Sonnet 5** (Phong, 2026-07-11) — simpler setup: no Anthropic
+   first-time-use form, GA on Bedrock since June 2026. Consequences absorbed in phases
+   3/5: OpenAI SDK + Responses API against the bedrock-mantle endpoint (not boto3
+   Converse), Bedrock API key auth, model region us-east-1/us-east-2 (EC2 stays in
+   ap-southeast-1 — cross-region API latency is fine for a demo), Langfuse native OpenAI
+   instrumentation replaces most manual wrapping. Claude notes in the Bedrock research
+   report are retained for the fallback path only.

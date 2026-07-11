@@ -16,19 +16,21 @@ one EC2 instance so the project demonstrably "runs on AWS".
 
 ## Requirements
 
-- Functional: Bedrock Converse callable with the Sonnet 5 global profile
-  (`global.anthropic.claude-sonnet-5` — confirm the exact ID against
-  `aws bedrock list-foundation-models` output before hardcoding anything); Langfuse
+- Functional: GPT-5.5 callable via the bedrock-mantle Responses endpoint
+  (`openai.gpt-5.5` — confirm exact ID and serving region, us-east-1 vs us-east-2,
+  against `aws bedrock list-foundation-models` before hardcoding anything); Langfuse
   project receiving traces; demo EC2 serving the Streamlit chat with all services up.
-- Non-functional: no long-lived AWS keys on the EC2 box (instance role); daily cost ~USD
-  5–7 (t3.xlarge on-demand, ap-southeast-1); instance stoppable overnight with a stable
+- Non-functional: the only AWS credential on the EC2 box is a **Bedrock API key scoped to
+  bedrock invocation** (bedrock-mantle takes bearer-style auth, so a pure instance-role
+  setup doesn't apply; a scoped key is the pragmatic equivalent); daily cost ~USD 5–7
+  (t3.xlarge on-demand, ap-southeast-1); instance stoppable overnight with a stable
   address (Elastic IP — small hourly IPv4 charge, worth it vs URL/SSH-config churn).
 
 ## Architecture
 
 ```
 EC2 t3.xlarge (ap-southeast-1, Ubuntu 22.04, Elastic IP,
-               IAM instance role: bedrock:InvokeModel[WithResponseStream])
+               Bedrock API key in env — scoped to bedrock invocation only)
   docker-compose (infra/docker-compose.yml):
     neo4j:5-community          (7474/7687, volume, heap capped ~4G)
     harness                    (Streamlit :8501; calls `uv run tn` — real CLI by then)
@@ -41,14 +43,14 @@ EC2 t3.xlarge (ap-southeast-1, Ubuntu 22.04, Elastic IP,
   by DEMO_PASSPHRASE (phase 3).
 ```
 
-- Bedrock note: ap-southeast-1 has **no in-region Claude**; global inference profile is
-  mandatory (research reports disagreed on whether global carries a premium — red team
-  says global bills standard rate; check the pricing page before quoting numbers to
-  anyone). Data transits other regions — fine for synthetic demo data.
-- Model access: one-time Anthropic use-case submission on the AWS account (Bedrock console
-  → Model access), then models are auto-enabled.
-- Dev-time Bedrock (before 5B): personal IAM user/SSO profile on each laptop with the same
-  policy.
+- Bedrock note: GPT-5.5 serves from **us-east-1/us-east-2** via the bedrock-mantle
+  endpoint — the EC2 stays in ap-southeast-1 and calls cross-region (~200ms extra API
+  latency, irrelevant next to model inference time). Data goes to a US region — fine for
+  synthetic demo data.
+- Model access: **no first-time-use form for OpenAI models** (that requirement is
+  Anthropic-specific) — standard simplified access; enable in the console if prompted.
+- Dev-time Bedrock (before 5B): each laptop gets the same scoped Bedrock API key (or its
+  own — they're cheap to mint and revoke).
 
 ## Related Code Files
 
@@ -60,21 +62,18 @@ EC2 t3.xlarge (ap-southeast-1, Ubuntu 22.04, Elastic IP,
 ## Implementation Steps
 
 **5A — enablement (day 0–1, ~2h):**
-1. AWS account ready; submit Anthropic use-case form; verify model list AND capture the
-   exact Sonnet 5 global-profile ID:
-   `aws bedrock list-foundation-models --region ap-southeast-1` +
-   `aws bedrock list-inference-profiles --region ap-southeast-1`.
-2. IAM policy: the authorizing action for Converse is **`bedrock:InvokeModel`** (+
-   `bedrock:InvokeModelWithResponseStream` for streaming) — there is no separate
-   `bedrock:Converse` action. Resources: `arn:aws:bedrock:*::foundation-model/*` (no
-   account id) **and** `arn:aws:bedrock:*:ACCOUNT_ID:inference-profile/*` (region
-   wildcard — global routing invokes in other regions). Attach to both laptops'
-   identities.
-3. Smoke test: one `converse()` call with the captured profile ID from Python.
-   **Same session:** check Service Quotas for Sonnet 5 RPM/TPM — fresh accounts can sit
-   near zero and Sonnet 5 reasoning tokens burn output quota at speed. Request increases
-   immediately (they take days and are deprioritized for no-traffic accounts); rehearse
-   with Haiku 4.5 as the throttle fallback either way.
+1. AWS account ready; verify GPT-5.5 availability and capture the exact model ID +
+   serving region: `aws bedrock list-foundation-models --region us-east-1` (and
+   us-east-2). No use-case form needed for OpenAI models. **Optional insurance:** submit
+   the Anthropic form anyway (5 min, free) so Claude is a live fallback later in the week.
+2. Mint a **Bedrock API key** (Bedrock console → API keys) backed by an identity whose
+   policy is bedrock-invocation-only; set `OPENAI_API_KEY` +
+   `OPENAI_BASE_URL=https://bedrock-mantle.<region>.api.aws/openai/v1` on both laptops.
+3. Smoke test: one `client.responses.create(model="openai.gpt-5.5", ...)` from Python via
+   the OpenAI SDK, including one function-tool round-trip (the item format is the most
+   likely early bug). **Same session:** check Service Quotas for OpenAI-model RPM/TPM —
+   fresh-account quotas can sit low; request increases immediately (they take days).
+   Confirm whether `previous_response_id` works on bedrock-mantle while you're there.
 4. Langfuse: per the validation decision — Cloud: create org/project, issue keys to both;
    self-host: defer to 5B, use Cloud keys meanwhile (traces are throwaway).
 5. Local Neo4j one-liner documented for Karsten:
@@ -100,15 +99,21 @@ EC2 t3.xlarge (ap-southeast-1, Ubuntu 22.04, Elastic IP,
 
 ## Success Criteria
 
-- [ ] 5A: both laptops can call Sonnet 5 via Converse and see the trace in Langfuse — **by end of day 1**; Sonnet 5 quota checked and increase requested the same day.
+- [ ] 5A: both laptops can call GPT-5.5 via the Responses API (incl. one function-tool
+  round-trip) and see the trace in Langfuse — **by end of day 1**; quotas checked and
+  increases requested the same day.
 - [ ] 5B: fresh `docker compose up -d` on the EC2 brings up everything; chat answers a trap question end-to-end from a phone browser.
-- [ ] `aws sts get-caller-identity` on the box shows the instance role; no `~/.aws/credentials` file exists.
+- [ ] The only AWS credential on the box is the scoped Bedrock API key env var; no
+  `~/.aws/credentials` file exists.
 - [ ] Stop/start of the instance survives (volumes persist Neo4j + Langfuse data).
 
 ## Risk Assessment
 
-- **Anthropic use-case approval delays** → submit day 0, first thing; while waiting, build
-  Phase 2/3 scaffolding (loop testable with a fake converse response fixture).
+- **bedrock-mantle surprises** (endpoint quirks, missing Responses features like
+  `previous_response_id`, SDK version sensitivity) → GPT-5.5 on Bedrock is only ~5 weeks
+  GA; smoke-test the full tool round-trip day 0 and pin the openai SDK version. Fallbacks
+  in order: gpt-oss on Bedrock (no form, boto3 Converse) or Claude Sonnet 5 (needs the
+  Anthropic form — submitted day 0 as insurance).
 - **t3.xlarge memory pressure with self-hosted Langfuse + Neo4j + full-scale DuckDB** →
   cap Neo4j heap; if tight, bump to t3.2xlarge (still ~USD 13/day) rather than debugging OOM.
 - **Global inference data-residency objection from organizers** → only alternative is
