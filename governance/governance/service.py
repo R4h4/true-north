@@ -1,7 +1,7 @@
-"""Real warehouse-surface command implementations for the `tn` CLI.
+"""Warehouse-surface command implementations for the `tn` CLI.
 
-Replaces the replay path for: whoami, metrics list/describe, dimensions
-list/describe, query, and the KG surface (kg schema/query via knowledge_graph.api).
+Serves: whoami, metrics list/describe, dimensions list/describe, query, and the
+KG surface (kg schema/query via knowledge_graph.api).
 
 Each function returns a complete envelope dict (CONTRACT §2). Auth is resolved
 first; an unknown token is AUTH_INVALID_TOKEN. Governance (denials, row filters,

@@ -1,9 +1,9 @@
 """Governed CLI (`tn`) — Typer app (CONTRACT.md v0.3).
 
-Every command is served by the REAL governance service (governance.service):
+Every command is served by the governance service (governance.service):
 persona resolution, derived denials, SQLGlot-compiled DuckDB queries, and the
 knowledge-graph surface (kg schema/query) against live Neo4j via
-knowledge_graph.api. No replay paths remain in the CLI.
+knowledge_graph.api.
 
 All output is a single JSON envelope on stdout (logs on stderr); the exit code
 follows `response.ok` (0 true / 1 false). Missing required options (e.g.
