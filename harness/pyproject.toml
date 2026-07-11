@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "The agent on top: chat interface consuming the governed CLI"
 requires-python = ">=3.12"
 dependencies = [
+    "ag-ui-strands>=0.2.2",
     "python-dotenv>=1.2.2",
     "strands-agents[openai,otel]>=1.47.0",
 ]

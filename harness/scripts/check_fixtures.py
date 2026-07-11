@@ -13,21 +13,15 @@ import sys
 sys.path.insert(0, "harness")
 
 from agent.tn_client import run_tn  # noqa: E402
-from agent.tools import resolve_term_cypher  # noqa: E402
+from agent.tools import (  # noqa: E402
+    access_check_cypher,
+    metric_detail_cypher,
+    resolve_term_cypher,
+)
 
-METRIC_DETAIL = (
-    "MATCH (m:Metric {{key: '{key}'}}) "
-    "OPTIONAL MATCH (m)-[:HAS_DIMENSION]->(d:Dimension) "
-    "OPTIONAL MATCH (k:Constraint)-[:CONSTRAINS]->(m) "
-    "OPTIONAL MATCH (m)-[:COMPUTED_FROM]->(t:Table) "
-    "RETURN m, collect(DISTINCT d) AS dims, collect(DISTINCT k) AS caveats, "
-    "collect(DISTINCT t) AS tables"
-)
-ACCESS_LAN = (
-    "MATCH (m:Metric) WHERE m.key IN ['net_revenue','gross_margin'] "
-    "OPTIONAL MATCH (k:Constraint)-[:CONSTRAINS]->(m) "
-    "RETURN m, collect(k) AS caveats"
-)
+# The gate must exercise the SAME renderers the live tools use - if a template
+# drifts from the stub's fixtures by one byte, the gate fails loudly here
+# instead of the agent missing every fixture at runtime.
 
 BINH, MAI, DUC, LAN = "tok-analyst-binh", "tok-exec-mai", "tok-rm-south-duc", "tok-mkt-lan"
 
@@ -39,15 +33,15 @@ CHECKS = [
     ("metrics list mai", ["metrics", "list", "--token", MAI], None),
     # DoD-1: Binh, retention ambiguity -> variant -> chart
     ("DoD1 resolve retention", ["kg", "query", resolve_term_cypher("retention"), "--token", BINH], None),
-    ("DoD1 metric detail", ["kg", "query", METRIC_DETAIL.format(key="repeat_purchase_rate_90d"), "--token", BINH], None),
+    ("DoD1 metric detail", ["kg", "query", metric_detail_cypher("repeat_purchase_rate_90d"), "--token", BINH], None),
     ("DoD1 query", ["query", "--metric", "repeat_purchase_rate_90d", "--group-by", "channel", "--token", BINH], None),
     # DoD-2: Mai vs Duc row filter
     ("DoD2 resolve revenue (mai)", ["kg", "query", resolve_term_cypher("revenue|gmv"), "--token", MAI], None),
-    ("DoD2 detail net_revenue (mai)", ["kg", "query", METRIC_DETAIL.format(key="net_revenue"), "--token", MAI], None),
+    ("DoD2 detail net_revenue (mai)", ["kg", "query", metric_detail_cypher("net_revenue"), "--token", MAI], None),
     ("DoD2 query mai", ["query", "--metric", "net_revenue", "--group-by", "channel", "--token", MAI], None),
     ("DoD2 query duc", ["query", "--metric", "net_revenue", "--group-by", "channel", "--token", DUC], None),
     # DoD-3: Lan exists-but-denied
-    ("DoD3 access annotations (lan)", ["kg", "query", ACCESS_LAN, "--token", LAN], None),
+    ("DoD3 access annotations (lan)", ["kg", "query", access_check_cypher(['net_revenue','gross_margin']), "--token", LAN], None),
     ("DoD3 describe gross_margin (lan)", ["metrics", "describe", "gross_margin", "--token", LAN], None),
     ("DoD3 gross_margin denied", ["query", "--metric", "gross_margin", "--group-by", "category", "--token", LAN], "ACCESS_DENIED_METRIC"),
     ("DoD3 inventory_days denied", ["query", "--metric", "inventory_days", "--token", LAN], "ACCESS_DENIED_TABLE"),

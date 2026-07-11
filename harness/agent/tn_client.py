@@ -57,4 +57,6 @@ def run_tn(args: list[str]) -> dict[str, Any]:
             f"tn exited {proc.returncode} without a parseable envelope. {detail}".strip()
         )
 
+    if not isinstance(envelope, dict):
+        return _internal(f"tn returned non-object JSON ({type(envelope).__name__})")
     return envelope

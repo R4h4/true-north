@@ -9,6 +9,7 @@ The persona token is a ContextVar set per session/run by the caller
 (server, smoke script) - tools never take it as a model-visible argument.
 """
 
+import re
 from contextvars import ContextVar
 from typing import Any
 
@@ -49,12 +50,15 @@ _ACCESS_CHECK = (
 
 
 def _with_token(args: list[str]) -> dict[str, Any]:
+    token = current_token.get()
     try:
         cache = _run_cache.get()
     except LookupError:
+        # Tool context was copied from the caller: a set() here would be
+        # discarded on return, so this fallback dict is per-call only. Callers
+        # must go through run_turn, which seeds the cache in the outer context.
         cache = {}
-        _run_cache.set(cache)
-    key = tuple(args)
+    key = (token, *args)
     if key in cache:
         cached = dict(cache[key])
         cached["_note"] = (
@@ -62,15 +66,36 @@ def _with_token(args: list[str]) -> dict[str, Any]:
             "Do not call again - act on it or tell the user."
         )
         return cached
-    envelope = run_tn(args + ["--token", current_token.get()])
+    envelope = run_tn(args + ["--token", token])
     cache[key] = envelope
     return envelope
 
 
+_TERM_RE = re.compile(r"^[a-z0-9_| ]+$", re.IGNORECASE)
+_KEY_RE = re.compile(r"^[a-z0-9_]+$")
+
+
 def resolve_term_cypher(term: str) -> str:
     """Render the canonical term-resolution regex; '|' alternatives get parens."""
+    if not _TERM_RE.match(term):
+        raise ValueError(f"term must be alphanumeric words or '|' alternatives, got {term!r}")
     rx = f"(?i).*({term}).*" if "|" in term else f"(?i).*{term}.*"
     return _RESOLVE_TERM.format(rx=rx)
+
+
+def metric_detail_cypher(metric_key: str) -> str:
+    """Render the canonical metric-detail query (single source for gate + tool)."""
+    if not _KEY_RE.match(metric_key):
+        raise ValueError(f"metric_key must be snake_case, got {metric_key!r}")
+    return _METRIC_DETAIL.format(key=metric_key)
+
+
+def access_check_cypher(metric_keys: list[str]) -> str:
+    """Render the canonical access-annotation query (no space in join: fixture-exact)."""
+    for key in metric_keys:
+        if not _KEY_RE.match(key):
+            raise ValueError(f"metric_key must be snake_case, got {key!r}")
+    return _ACCESS_CHECK.format(keys=",".join(f"'{k}'" for k in metric_keys))
 
 
 def _is_no_fixture(envelope: dict) -> bool:
@@ -103,15 +128,14 @@ def resolve_term(term: str) -> dict:
 def get_metric_context(metric_key: str) -> dict:
     """Load a metric's governed context before querying it: valid dimensions,
     caveats (constraints you must narrate), and source tables."""
-    return _with_token(["kg", "query", _METRIC_DETAIL.format(key=metric_key)])
+    return _with_token(["kg", "query", metric_detail_cypher(metric_key)])
 
 
 @tool
 def check_metric_access(metric_keys: list[str]) -> dict:
     """Check access annotations (_access.readable) and caveats for specific
     metric keys - use when a metric may exist but be denied for this user."""
-    keys = ",".join(f"'{k}'" for k in metric_keys)  # no space: fixture-exact
-    return _with_token(["kg", "query", _ACCESS_CHECK.format(keys=keys)])
+    return _with_token(["kg", "query", access_check_cypher(metric_keys)])
 
 
 @tool

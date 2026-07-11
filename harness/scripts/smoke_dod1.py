@@ -14,8 +14,10 @@ from dotenv import load_dotenv
 
 load_dotenv(pathlib.Path(__file__).resolve().parents[1] / ".env")
 
-from agent.governed_agent import ask_user_handler, build_agent  # noqa: E402
+from agent.governed_agent import build_agent, run_turn  # noqa: E402
 from agent.tracing import init_tracing  # noqa: E402
+
+TOKEN = "tok-analyst-binh"
 
 asked: list[str] = []
 
@@ -30,13 +32,12 @@ def auto_answer(question: str, options: list[str]) -> str:
 
 def main() -> int:
     init_tracing()
-    ask_user_handler.set(auto_answer)
-    agent = build_agent("tok-analyst-binh")
-    result = agent("How is our customer retention doing by channel?")
+    agent = build_agent()
+    result = run_turn(agent, TOKEN, auto_answer, "How is our customer retention doing by channel?")
     text = str(result)
     if "query_warehouse" not in str(agent.messages) and text.strip().endswith("?"):
         # Agent asked a conversational follow-up; answer like a user would.
-        result = agent("No specific period - use all available data.")
+        result = run_turn(agent, TOKEN, auto_answer, "No specific period - use all available data.")
         text = str(result)
 
     tool_uses = [

@@ -25,11 +25,29 @@ def ask_user(question: str, options: list[str]) -> str:
     return ask_user_handler.get()(question, options)
 
 
-def build_agent(token: str) -> Agent:
-    current_token.set(token)
-    reset_run_cache()
+def build_agent() -> Agent:
+    """Build a persona-agnostic agent. The persona token binds per turn via
+    run_turn - never at build time, so a cached agent can't leak personas
+    across concurrent sessions."""
+    schema = kg_schema()
+    if not schema.get("ok"):
+        raise RuntimeError(f"tn kg schema failed at bootstrap: {schema.get('error')}")
     return Agent(
         model=build_model(),
         tools=GOVERNED_TOOLS + [ask_user],
-        system_prompt=build_system_prompt(kg_schema()),
+        system_prompt=build_system_prompt(schema),
     )
+
+
+def run_turn(agent: Agent, token: str, ask_handler: AskUserFn, message: str):
+    """Run one user turn with token/ask-handler/cache bound in THIS context.
+
+    Strands copies the current context into its worker tasks at invocation
+    time, so binding here (immediately before the call) is what makes the
+    ContextVars reach the tools - and a fresh cache per turn keeps the
+    idempotency guard scoped to a single turn.
+    """
+    current_token.set(token)
+    ask_user_handler.set(ask_handler)
+    reset_run_cache()
+    return agent(message)
