@@ -1,0 +1,9 @@
+key: non-performing-loans
+name: Non-performing loans (90+ DPD)
+definition: >-
+  Share of outstanding receivables 90 or more days past due — the hard NPL measure used
+  for board/regulatory reporting. Drops mechanically after a write-off wave because
+  written-off loans leave the snapshot entirely, not because portfolio quality improved.
+aliases: [npl, bad debt ratio, no xau, 90+ dpd, non-performing]
+variant_of: portfolio-delinquency
+measured_by: npl_ratio

@@ -1,0 +1,9 @@
+key: risk_grade
+name: Risk grade
+description: >-
+  Risk grade assigned at underwriting for an application (fact_applications.risk_grade).
+  A..E, A lowest risk. Distinct from dim_customer.risk_grade, which is the customer's
+  grade AT ORIGINATION of their first loan and does not update per application.
+type: categorical
+source: fact_applications.risk_grade
+canonical_values: [A, B, C, D, E]

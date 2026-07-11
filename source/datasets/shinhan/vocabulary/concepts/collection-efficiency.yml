@@ -1,0 +1,6 @@
+key: collection-efficiency
+name: Collection efficiency
+definition: Share of the amount due in a month that was actually collected.
+aliases: [collections rate, recovery rate]
+variant_of: null
+measured_by: collection_efficiency

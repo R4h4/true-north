@@ -1,0 +1,9 @@
+key: early-delinquency
+name: Early delinquency (30+ DPD)
+definition: >-
+  Share of outstanding receivables 30 or more days past due — the early-warning
+  delinquency measure. Understated when restructured loans (DPD reset to 0) are not
+  surfaced separately.
+aliases: [30 plus, early warning, dpd30, 30+ dpd]
+variant_of: portfolio-delinquency
+measured_by: dpd30_plus_ratio

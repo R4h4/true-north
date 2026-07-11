@@ -1,0 +1,4 @@
+key: dim_partner
+description: POS partner stores (electronics, mobile, motorbike, appliance chains). Only relevant to pos_partner-channel loans.
+grain: partner
+freshness_note: refreshed weekly

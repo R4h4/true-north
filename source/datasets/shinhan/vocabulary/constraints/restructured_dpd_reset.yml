@@ -1,0 +1,11 @@
+key: restructured_dpd_reset
+statement: >-
+  Restructuring resets a loan's dpd to 0 (is_restructured = true), moving it back into
+  the 'current' bucket regardless of prior delinquency. A restructuring campaign
+  (planted 2025-03..05) makes dpd30_plus_ratio understate risk unless is_restructured is
+  surfaced alongside it — filter or split on is_restructured before trusting a drop in
+  30+ DPD following a restructuring push.
+severity: warning
+constrains:
+  - metric:dpd30_plus_ratio
+  - table:fact_loan_snapshots

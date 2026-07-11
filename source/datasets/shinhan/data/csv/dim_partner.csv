@@ -1,0 +1,26 @@
+partner_id,partner_name,category,province
+PTR001,Phong Vu Dong #1,electronics,Dong Nai
+PTR002,The Gioi Dien May Ho #2,electronics,Ho Chi Minh City
+PTR003,Viettel Store Khanh #3,mobile,Khanh Hoa
+PTR004,Viettel Store Bac #4,mobile,Bac Ninh
+PTR005,HC Home Center Nghe #5,electronics,Nghe An
+PTR006,Phong Vu Can #6,electronics,Can Tho
+PTR007,CellphoneS Da #7,mobile,Da Nang
+PTR008,The Gioi Dien May Hai #8,electronics,Hai Phong
+PTR009,Nguyen Kim Da #9,electronics,Da Nang
+PTR010,Yamaha Town Can #10,motorbike,Can Tho
+PTR011,The Gioi Dien May Ho #11,electronics,Ho Chi Minh City
+PTR012,Dien May Cho Lon Bac #12,appliances,Bac Ninh
+PTR013,CellphoneS Da #13,mobile,Da Nang
+PTR014,Nguyen Kim Binh #14,electronics,Binh Duong
+PTR015,Piaggio Store Hai #15,motorbike,Hai Phong
+PTR016,Piaggio Store Dong #16,motorbike,Dong Nai
+PTR017,Honda Head Can #17,motorbike,Can Tho
+PTR018,HC Home Center Can #18,electronics,Can Tho
+PTR019,FPT Shop Nghe #19,mobile,Nghe An
+PTR020,Nguyen Kim Bac #20,electronics,Bac Ninh
+PTR021,The Gioi Dien May Binh #21,electronics,Binh Duong
+PTR022,Dien May Xanh Ho #22,electronics,Ho Chi Minh City
+PTR023,Yamaha Town Ho #23,motorbike,Ho Chi Minh City
+PTR024,Dien May Xanh Binh #24,electronics,Binh Duong
+PTR025,The Gioi Di Dong Bac #25,mobile,Bac Ninh

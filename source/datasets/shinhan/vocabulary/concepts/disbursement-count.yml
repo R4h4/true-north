@@ -1,0 +1,6 @@
+key: disbursement-count
+name: Disbursement count
+definition: Number of loans disbursed in a period — the volume complement to disbursement amount.
+aliases: [loan count, number of loans, deals funded]
+variant_of: null
+measured_by: disbursement_count

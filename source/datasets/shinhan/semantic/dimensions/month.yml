@@ -1,0 +1,10 @@
+key: month
+name: Month
+description: >-
+  Business month of the underlying event. Virtual — each metric binds it to a concrete
+  time column per measure (disbursed_date, snapshot_month, or collections month);
+  --grain/--start/--end apply here. For fpd_rate the bound column is the DISBURSEMENT
+  month (vintage), not the observation month — see the fpd_rate metric caveat.
+type: time
+source: null
+grains: [month, quarter, year]

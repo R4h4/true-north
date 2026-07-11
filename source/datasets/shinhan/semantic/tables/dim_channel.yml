@@ -1,0 +1,4 @@
+key: dim_channel
+description: The four origination channels (digital app, POS partner, DSA, telesales).
+grain: channel
+freshness_note: static reference table

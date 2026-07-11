@@ -1,0 +1,4 @@
+key: dim_customer
+description: One row per Shinhan customer; risk_grade here is AT ORIGINATION, not current.
+grain: customer
+freshness_note: refreshed daily

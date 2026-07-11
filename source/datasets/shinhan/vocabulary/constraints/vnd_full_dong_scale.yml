@@ -1,0 +1,10 @@
+key: vnd_full_dong_scale
+statement: >-
+  All amounts are raw VND stored as int64, full đồng — no thousands scaling.
+  Management speaks in tỷ (billions); divide by 1e9 when narrating a large aggregate.
+severity: warning
+constrains:
+  - metric:disbursement_amount
+  - metric:enr
+  - table:fact_disbursements
+  - table:fact_loan_snapshots

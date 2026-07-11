@@ -1,0 +1,31 @@
+key: approval_rate
+name: Approval rate
+short_description: Share of decided applications approved.
+description: >
+  approved / (approved + rejected) from fact_applications. Cancelled applications are
+  EXCLUDED from the denominator — they are applicant withdrawals, not underwriting
+  decisions, and including them understates the true approval rate.
+concept: approval-rate
+type: ratio
+unit: ratio
+version: "0.1"
+formula: "COUNT(decision = 'approved') / COUNT(decision IN ('approved','rejected'))"
+time_dimension: month
+dimensions: [product, channel, risk_grade]
+compute:
+  measures:
+    approved_count:
+      table: fact_applications
+      expr: app_id
+      agg: count
+      time_column: ts
+      filters:
+        - {column: decision, operator: "=", value: approved}
+    decided_count:
+      table: fact_applications
+      expr: app_id
+      agg: count
+      time_column: ts
+      filters:
+        - {column: decision, operator: in, value: [approved, rejected]}
+  expr: "approved_count / decided_count"

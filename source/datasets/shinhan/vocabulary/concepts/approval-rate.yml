@@ -1,0 +1,8 @@
+key: approval-rate
+name: Approval rate
+definition: >-
+  Share of underwriting decisions (approved + rejected) that came back approved.
+  Cancelled applications — applicant withdrawals — are excluded from the denominator.
+aliases: [approval, underwriting rate, hit rate]
+variant_of: null
+measured_by: approval_rate

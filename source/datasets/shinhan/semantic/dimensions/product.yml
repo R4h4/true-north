@@ -1,0 +1,6 @@
+key: product
+name: Product
+description: Lending product.
+type: categorical
+source: dim_product.product_key
+canonical_values: [cash_loan, cd_installment, two_wheeler_loan, credit_card_loan]

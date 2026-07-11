@@ -1,0 +1,5 @@
+product_key,name,is_secured,max_tenor_months
+cash_loan,iShinhan Cash Loan,false,36
+cd_installment,Consumer Durable Installment,false,24
+two_wheeler_loan,Two-Wheeler Loan,true,36
+credit_card_loan,FIRST Credit Card Installment,false,12
