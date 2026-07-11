@@ -10,128 +10,78 @@ dependencies: []
 
 ## Overview
 
-Half-day joint session that produces the frozen governed-CLI contract and the repo working
-agreement. This is the only phase where both people must be in the same (virtual) room;
-everything after runs in parallel.
+**Superseded in substance by [PR #2](https://github.com/R4h4/true-north/pull/2)
+(`contract/v0.3`, Karsten):** the contract this phase was going to draft exists —
+`CONTRACT.md` (repo root, normative-only) + 10 golden examples in `contracts/examples/` +
+all four services pre-registered as uv workspace members. The phase is now a **review &
+ratify** exercise: Phong reviews PR #2, answers the flagged divergences, and the merge of
+PR #2 is the contract freeze.
+
+What v0.3 already covers (all of this phase's original "MUST freeze" list): CLI `tn` with
+`whoami` / `metrics list|describe` / `dimensions list|describe` / `query` (flag-based DSL:
+`--metric --group-by --grain --filter --start --end --limit`) / `kg schema` / `kg query`;
+JSON envelope with `contract_version`, typed `applied_permissions`, per-table freshness,
+provenance incl. `compiled_sql`; scalar serialization table (int VND money with 2^53
+guarantee, 0–1 ratios, business-local timestamps, NaN→null); 10 error codes with
+existence-vs-permission distinction (`METRIC_NOT_FOUND` + candidates vs `ACCESS_DENIED_*`
++ reason); exit codes 0/1/2; KG node labels/relationships/invariants (§4) + canonical
+Cypher examples served by `tn kg schema`; 4 personas as observable behavior.
 
 ## Requirements
 
-- Functional: a written, example-rich spec of the governed CLI both surfaces; a committed
-  token→persona fixture; documented repo ownership + git rules.
-- Non-functional: spec small enough to hold in one head (~2 pages); every behavior
-  demonstrated by a concrete request/response example.
+- Functional: PR #2 reviewed and merged with Phong's explicit positions on the flagged
+  divergences; repo working agreement (ownership fences, git rules) landed in README.
+- Non-functional: review turnaround same-day — this is still the only blocking sync point.
 
-## Architecture
+## Review positions (Phong's answers to PR #2's flagged divergences)
 
-The governed CLI is invoked as a subprocess (harness side) with this proposed shape —
-adjust in-session, then freeze:
+| Divergence | Position |
+|---|---|
+| 10 error codes vs draft's 4 | **Accept.** Existence-vs-permission and `did_you_mean`/`candidates` details are exactly what the agent needs to self-correct — richer is better here. |
+| Exit codes 0/1/2 vs 0-always | **Accept 0/1/2.** Machine-distinguishable handled-error vs crash is conformance-testable; harness treats "non-zero without parseable envelope" as `INTERNAL` per contract. |
+| 4 personas, region-scoped (South) row filter | **Accept.** `marketing_ops` makes masked/tokenized/banded separately demoable; region beats city for row-filter visuals. |
+| `CONTRACT.md` root + `governance/fixtures/users.yaml` vs `docs/…` + `contracts/personas.json` | **Accept.** Locations are Karsten's tree; only tokens + observable behavior are contract. |
+| CLI name `tn` | Accept. |
 
-```bash
-governed-cli --token TOKEN whoami                 # → persona + permissions JSON
-governed-cli --token TOKEN graph  "<cypher>"      # → knowledge-graph surface
-governed-cli --token TOKEN metrics                # → list governed metrics + dimensions
-governed-cli --token TOKEN query  '<dsl-json>'    # → warehouse surface (metrics DSL)
-```
+To confirm in the same review (genuinely open, not in the PR body):
 
-**The warehouse surface is a metrics DSL, NOT raw SQL** (decided by Phong 2026-07-11:
-exposing SQL directly to the warehouse is dangerous and defeats the governance story —
-the agent requests governed metrics; the semantic layer owns the SQL). Proposed DSL v0
-request, deliberately tiny:
-
-```json
-{"metric": "net_revenue",
- "dimensions": ["channel"],
- "filters": {"province": "Ho Chi Minh City"},
- "time": {"from": "2025-01-01", "to": "2025-12-31", "grain": "month"}}
-```
-
-v0 scope: one metric per request, group-by dimensions, equality filters, date range +
-grain. Anything fancier (metric arithmetic, top-N, or-filters) is a v1 changelog entry.
-
-JSON envelope on stdout, exit code 0/1, logs to stderr:
-
-```json
-{"ok": true,  "user": "hcmc_manager", "data": {"columns": ["..."], "rows": [["..."]]}, "notices": ["column customer_name masked"]}
-{"ok": false, "user": "hcmc_manager", "error": {"code": "PERMISSION_DENIED", "message": "table dim_customers not accessible; metric exists but uses it"}}
-```
-
-Error codes (closed set): `PERMISSION_DENIED`, `INVALID_QUERY`, `UNKNOWN_TOKEN`,
-`INTERNAL`. `notices` is how governance tells the agent what was silently
-filtered/masked — the harness surfaces these in answers.
-
-**The contract MUST also freeze these surfaces** (red-team finding: these are exactly
-where mock/real divergence would surface silently on integration day):
-
-- **KG schema**: node labels, relationship types, and property names the agent may write
-  Cypher against (e.g. `(:Metric {name, definition, caveat})-[:USES]->(:Table)`,
-  `(:Persona)-[:CAN_ACCESS]->(:Table)`). The LLM authors Cypher live — an unfrozen graph
-  schema means every agent query returns empty against the real graph. Karsten owns the
-  ingest internals, but the queryable shape is contract.
-- **`graph` result shape**: Cypher returns rows of maps/values, not warehouse columns —
-  give it its own envelope example.
-- **Serialization**: JSON types for DECIMAL (string vs number), DATE/TIMESTAMP (ISO 8601),
-  NULL — DuckDB and Neo4j both bite here.
-- **Exit codes**: `0` for any well-formed response including `ok:false` errors; non-zero
-  only for crashes. (Alternative — nonzero on `ok:false` — fine too, but pick one.)
-- **Mask semantics per persona**: "masked" = replaced with stable token (`CUST_8f3a`),
-  dropped column, or `***`? Define per persona; the phase-02 shim currently conflates
-  CEO ("PII masked") with analyst ("no PII columns").
-- **`notices` structure**: machine-readable, e.g.
-  `{"type": "column_masked", "column": "customer_name"}` — free prose can't be
-  conformance-tested.
-- **The DSL v0 request schema** — field names, filter semantics, allowed grains, and the
-  error for an unknown metric/dimension (`INVALID_QUERY` with the list of valid names, so
-  the agent can self-correct). The LLM fills this schema via tool inputSchema, so it must
-  be frozen here, not discovered later.
-
-Personas (fixture `contracts/personas.json`, static tokens are fine — this is a demo):
-
-| Token | Persona | Governance behavior to demo |
-|---|---|---|
-| `tok_ceo` | CEO | full rows, PII masked |
-| `tok_hcmc_manager` | HCMC store manager | row-level: only `Ho Chi Minh City` stores |
-| `tok_analyst` | Analyst | no PII columns, no `dim_customers` table access |
+1. **Stub ownership** — CONTRACT.md says "a stub with canned responses ships first; same
+   contract, same goldens" under the `tn` entrypoint. Recommend: Karsten ships the stub
+   (it lives in his tree under `tn`); Phong owns the conformance runner and contributes
+   replay fixtures for extra demo questions (see phase 2).
+2. **`ROW_LIMIT` / `STALE_DATA` warning codes** — closed set or open? (Harness narrates
+   warnings; an open set means narrate generically.)
 
 ## Related Code Files
 
-- Create: `docs/governed-cli-contract.md` (the spec: commands, envelope, error codes,
-  personas, permission semantics, changelog section)
-- Create: `contracts/personas.json` (token → persona → permissions)
-- Create: `contracts/examples/` (golden request/response pairs, one per command × outcome)
-- Modify: `README.md` (ownership table + git rules from plan.md "Parallel-Work Rules";
-  mark governed CLI spec as "defined, see docs/governed-cli-contract.md")
+- Review (Karsten's PR): `CONTRACT.md`, `contracts/examples/*.json`,
+  `governance/fixtures/users.yaml`, root `pyproject.toml` + placeholder packages.
+- Modify (after merge, Phong): `README.md` — ownership table + git rules from plan.md
+  "Parallel-Work Rules"; point the interface-spec line at `CONTRACT.md`.
 
 ## Implementation Steps
 
-1. **Before the session** (Phong, ~1h): pre-draft the full contract text from the shapes
-   above, including defaults for every "MUST freeze" bullet. The session ratifies a draft;
-   it does not design from a blank page — that's how the 3h timebox holds.
-2. Joint session (timebox 3h): walk the draft; decide the contested points — CLI name,
-   the DSL v0 request schema (Karsten leads — he owns the semantic layer that compiles
-   it), the `metrics` discovery output shape, and the KG schema shape.
-3. Write `docs/governed-cli-contract.md`; both commit-approve the same PR.
-4. Commit `contracts/personas.json` + golden examples. Golden examples assert **envelope
-   structure and error codes**, not row values — value asserts would break when dataset
-   scale changes between laptops (tiny) and the demo box (full).
-5. Add ownership/workflow section to README. No branch protection / CODEOWNERS — it only
-   gates PRs while the workflow is push-to-main; for 2 people the fence is a social
-   contract, enforced by the `git log --stat` spot-check.
-6. Also pre-add all four services (`source`, `governance`, `knowledge-graph`, `harness`)
-   as uv workspace members in root `pyproject.toml` **in this session** — kills the most
-   likely day-1 merge conflict on a joint-controlled file.
+1. Phong reviews PR #2 against this phase's checklist; posts the positions table above
+   plus the two open questions as the review.
+2. Merge PR #2 (Karsten merges after discussion resolves; contract v0.3 = frozen v1).
+3. Phong lands README ownership/workflow section (small follow-up PR or direct push after
+   merge — it touches a joint-controlled file, so PR if any wording is contested).
+4. Rebase/re-point anything in flight: `plans/` PR #1 references updated (done in this
+   plan), harness env defaults set to `uv run tn`.
 
 ## Success Criteria
 
-- [ ] Spec merged with both owners' approval; changelog section present.
-- [ ] `contracts/personas.json` + at least 6 golden examples committed (3 commands × ok/error).
-- [ ] README documents ownership fences and the `uv.lock` conflict rule.
+- [ ] PR #2 merged with the divergence positions recorded in review comments.
+- [ ] Stub ownership + warning-code question answered in the review thread.
+- [ ] README documents ownership fences, push-to-main + rebase rule, joint-controlled
+  paths (`CONTRACT.md`, `contracts/examples/`, root `pyproject.toml`, `README.md`), and
+  the `uv.lock` regen rule.
 - [ ] Both tracks can state "what I build next" without asking the other anything.
 
 ## Risk Assessment
 
-- **DSL scope creep in the session** → v0 stays at one-metric/group-by/equality-filter/
-  time-range; every extension is a changelog entry later. A tiny DSL the semantic layer
-  can actually compile beats an expressive one that slips the week. (Raw SQL passthrough
-  is explicitly off the table — user decision 2026-07-11.)
-- **Spec bikeshedding blows the timebox** → the pre-drafted text is the default;
-  silence = accepted.
+- **Review scope creep** (re-litigating v0.3 details) → the contract is demonstrably
+  better than the draft; only the two open questions block. Everything else is a
+  changelog entry later, per the contract's own PR rule.
+- **README rules slip** → they're the anti-collision agreement; land them the same day
+  even if as one commit.

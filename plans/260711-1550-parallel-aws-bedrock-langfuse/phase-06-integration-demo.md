@@ -24,10 +24,10 @@ from plan `260711-1547-phongvu-demo-data`.
 
 ## Architecture
 
-No new components. The swap is one env change:
-`GOVERNED_CLI_CMD="uv run python -m mock_cli"` → real CLI command from Phase 4. Everything
-that differs beyond that is a bug in the contract, the mock, or the real CLI — triaged by
-running the conformance suite against both.
+No new components. The stub is replaced by the real `tn` behind the same entrypoint
+(`uv run tn`) — the harness config doesn't even change. Everything that differs beyond
+that is a bug in the contract, the stub fixtures, or the real CLI — triaged by running
+the conformance suite against both.
 
 ## Related Code Files
 
@@ -41,7 +41,7 @@ running the conformance suite against both.
 
 1. On the EC2 box: generate full-scale data (per demo-data plan), run KG ingest, start stack.
 2. Run conformance suite against real CLI; fix contract-level breaks first (joint).
-3. Run the 8 trap questions × `tok_ceo`; compare against
+3. Run the 8 trap questions × `tok-exec-mai`; compare against
    `source/data/validation_report.md` values (from the demo-data plan) — the agent's
    numbers must match the "correct" query column, not the naive one.
 4. Persona pass: same headline question for all 3 tokens; verify row filtering, masking
@@ -60,11 +60,12 @@ running the conformance suite against both.
 
 ## Risk Assessment
 
-- **Real CLI late** (Phase 4 slip) → demo on mock (Phase 2) with a "governance layer in
-  progress" slide; decided at the day-5 checkpoint, not demo morning. Be honest about the
-  limits of this fallback: the canned-KG "access denied" beat won't survive judge
-  follow-up questions, so on mock, script the demo tightly and say what's mocked.
+- **Real CLI late** (Phase 4 slip) → demo on the stub (Phase 2 fixtures) with a
+  "governance layer in progress" slide; decided at the day-5 checkpoint, not demo
+  morning. Be honest about the limits of this fallback: canned responses won't survive
+  judge follow-up questions, so on the stub, script the demo tightly and say what's
+  canned.
 - **Agent regresses on real Cypher schema** (fixtures were canned) → budget half a day of
-  prompt tuning; keep mock-era traces in Langfuse for A/B comparison.
+  prompt tuning; keep stub-era traces in Langfuse for A/B comparison.
 - **Full-scale data too slow on the box** → fall back to `--scale small` for the live
   demo; traps hold at all scales (per demo-data plan), so the story survives.

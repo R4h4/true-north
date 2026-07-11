@@ -31,7 +31,7 @@ EC2 t3.xlarge (ap-southeast-1, Ubuntu 22.04, Elastic IP,
                IAM instance role: bedrock:InvokeModel[WithResponseStream])
   docker-compose (infra/docker-compose.yml):
     neo4j:5-community          (7474/7687, volume, heap capped ~4G)
-    harness                    (Streamlit :8501; GOVERNED_CLI_CMD → real CLI)
+    harness                    (Streamlit :8501; calls `uv run tn` — real CLI by then)
     [langfuse stack]           (only if self-host decision — 6 containers: web, worker,
                                 postgres, clickhouse, redis, minio)
   security group: 22 (team IPs only); nothing else inbound

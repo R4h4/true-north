@@ -1,87 +1,88 @@
 ---
 phase: 2
-title: "Mock Governed CLI & Conformance Tests"
+title: "Stub CLI Fixtures & Conformance Tests"
 status: pending
 priority: P1
 dependencies: [1]
 ---
 
-# Phase 2: Mock Governed CLI & Conformance Tests
+# Phase 2: Stub CLI Fixtures & Conformance Tests
 
 ## Overview
 
-A thin fake of the governed CLI that honors the Phase 1 contract, so the harness can be
-built and demoed end-to-end before Karsten's real services exist. Plus the conformance
-suite that later proves mock and real CLI are interchangeable.
+Reconciled to contract v0.3 (PR #2): CONTRACT.md specifies that "a stub with canned
+responses ships first" under the same `tn` entrypoint and goldens. Pending the phase-1
+ownership answer, the stub itself is expected to be Karsten's (it lives under `tn` in his
+tree). Phong's deliverables in this phase are the **conformance runner** and the **replay
+fixture set** that makes the stub rich enough for agent development. The earlier idea of
+a Phong-owned DSL-to-DuckDB mock compiler is dropped — YAGNI: goldens are normative for
+structure, and agent-loop development needs believable envelopes, not real aggregation.
 
 ## Requirements
 
-- Functional: implements `whoami`, `graph`, `metrics`, `query` (metrics DSL) per
-  contract; all 3 personas behave differently; permission denials and notices produced
-  per `contracts/personas.json`.
-- Non-functional: no Neo4j dependency (canned graph answers); realistic enough that
-  swapping to the real CLI changes zero harness code (only the `GOVERNED_CLI_CMD` env var).
+- Functional: `pytest` conformance suite that runs every golden in `contracts/examples/`
+  against whatever `GOVERNED_CLI_CMD` points at (stub now, real CLI later) and asserts
+  envelope structure, error codes, exit codes (0/1/2), and typed
+  `applied_permissions`/`permissions` objects — not row values.
+- Functional: replay fixtures covering the agent-dev loop beyond the 10 goldens: the
+  multi-round KG pattern (term → ambiguity parent → variants → metric + constraints via
+  §4.4 canonical queries), one full `tn query` per demo trap question, and the
+  self-correction paths (`METRIC_NOT_FOUND` + candidates, `INVALID_DIMENSION_VALUE` +
+  `did_you_mean`).
+- Non-functional: zero dependency on parquet/DuckDB/Neo4j — pure canned JSON; fixtures
+  keyed by normalized command+args.
 
 ## Architecture
 
-- `graph` surface: pattern-match incoming Cypher against a small fixture set (metric
-  definitions, dimension lookups, permission metadata for the personas). **Fixtures must
-  follow the KG schema frozen in the Phase 1 contract** — the agent's Cypher habits formed
-  against the mock must survive contact with the real graph. Unknown-but-valid Cypher →
-  "no results" success; malformed Cypher → `INVALID_QUERY` (golden example for both).
-- `query` surface: a naive compiler from DSL v0 requests to DuckDB SQL over
-  `source/data/parquet/*.parquet` — a dict of metric-name → SQL template plus group-by/
-  filter/time clauses (~50–80 lines, NOT a query planner; 3–4 metrics suffice). Generated
-  **data** is the stable contract, defined by `schema.py`; do NOT import `source/` Python
-  modules — Karsten refactors those internals in Phase 4, and a cross-fence import lets
-  him break this mock without violating any fence rule. On top, apply demo governance
-  from `personas.json`: row filter (province for `tok_hcmc_manager`), column masking per
-  the contract's mask semantics (→ structured `notices`), metric/table deny (a metric
-  backed by `dim_customers` for `tok_analyst` → `PERMISSION_DENIED`). Unknown
-  metric/dimension → `INVALID_QUERY` listing valid names (per contract).
-- `metrics` surface: dump the mock's metric/dimension registry — same shape the real
-  semantic layer will emit.
-- Conformance tests parametrized by `GOVERNED_CLI_CMD`, asserting the golden examples from
-  `contracts/examples/` plus envelope/exit-code invariants. Same suite runs against the
-  real CLI in Phase 4/6.
+- `contracts/conformance/` (joint-controlled): pytest suite, parametrized by
+  `GOVERNED_CLI_CMD` env var (default `uv run tn`). Structure asserts only — the
+  contract's own rule (values are illustrative; asserting them breaks across dataset
+  scales).
+- Fixture contributions to the stub: JSON files following the golden format, proposed via
+  PR into wherever the stub keeps its responses (Karsten's tree — so these are PRs, not
+  direct pushes). Fixture content authored from CONTRACT.md §4.3's planted-ambiguity
+  patterns (Retention variants, GMV gross vs net, basket size by items vs value).
+- Personas: the four contract tokens (`tok-exec-mai`, `tok-rm-south-duc`, `tok-mkt-lan`,
+  `tok-analyst-binh`); fixtures must show region-South `row_filter`, `column_banded`
+  birth years, tokenized customer ids, and `ACCESS_DENIED_METRIC` with reason.
 
 ## Related Code Files
 
-- Create: `harness/mock_cli/__init__.py`, `harness/mock_cli/__main__.py`,
-  `harness/mock_cli/graph_fixtures.py`, `harness/mock_cli/governance_shim.py` (Python →
-  snake_case)
-- Create: `contracts/conformance/test_governed_cli_conformance.py` (joint-controlled path;
-  Karsten reviews)
-- Create: `harness/pyproject.toml` (uv workspace member, dep on duckdb)
-- (Root `pyproject.toml` workspace members were pre-added in the Phase 1 session.)
+- Create: `contracts/conformance/test_governed_cli_conformance.py` (+ tiny
+  `conftest.py` for the CLI-invocation helper)
+- Create (via PR to Karsten's tree): stub replay fixtures for the trap questions + KG
+  exploration rounds
+- Modify: none of `source/`, `governance/`, `knowledge-graph/` directly
 
 ## Implementation Steps
 
-1. Scaffold `harness/` as a uv workspace member; verify `uv run python -m mock_cli --help`
-   from `harness/`.
-2. Implement token resolution from `contracts/personas.json` (`UNKNOWN_TOKEN` error path).
-3. Implement the DSL-v0-to-DuckDB compiler + governance shim (filter/mask/deny +
-   structured notices) + `metrics` registry dump. Dev data: `cd source && uv run python
-   -m generator.generate --scale tiny --seed 42` (seconds; no dependency on the demo-data
-   plan's full-scale run).
-4. Implement `graph` canned fixtures: enough Cypher patterns to cover metric lookup
-   ("what does revenue mean" → gross/net/B2B caveats from TRAPS.md), dimension vocab
-   (canonical channel/province values), and permission metadata per persona.
-5. Write conformance suite against golden examples; run it: `GOVERNED_CLI_CMD="uv run
-   python -m mock_cli" uv run pytest contracts/conformance/`.
+1. Write the conformance runner: for each golden, invoke the CLI, compare envelope
+   structure (keys, types, error code, exit code) with value-shape checks (e.g.
+   `applied_permissions[].type` ∈ the four disclosure types).
+2. Run it against the stub the moment PR #2's stub lands; report gaps to Karsten.
+3. Author the agent-dev fixture set (trap questions × personas, KG rounds); PR them to
+   the stub.
+4. Wire `GOVERNED_CLI_CMD` default (`uv run tn`) into harness config so phase 3 starts
+   against the stub with zero further setup.
 
 ## Success Criteria
 
-- [ ] Conformance suite green against the mock.
-- [ ] Same question via `tok_hcmc_manager` vs `tok_ceo` returns different row counts.
-- [ ] `tok_analyst` requesting a customer-backed metric gets `PERMISSION_DENIED` with a
-  helpful message; an unknown metric gets `INVALID_QUERY` listing valid names.
-- [ ] Karsten has reviewed the conformance suite (it constrains his Phase 4).
+- [ ] Conformance suite green against the stub; same suite later runs unmodified against
+  the real CLI (phase 4 gate).
+- [ ] Same trap question via `tok-rm-south-duc` vs `tok-exec-mai` shows a `row_filter`
+  disclosure difference in fixtures.
+- [ ] `tok-mkt-lan` requesting a margin metric replays `ACCESS_DENIED_METRIC` with the
+  masked-column reason; an unknown metric replays `METRIC_NOT_FOUND` with candidates.
+- [ ] Agent loop (phase 3) can complete a full KG-rounds → query → answer cycle for at
+  least 3 trap questions purely on the stub.
 
 ## Risk Assessment
 
-- **Mock drifts from what Karsten builds** → the conformance suite is joint-controlled and
-  is the definition of "compatible"; drift shows up as a red suite, not a demo-day surprise.
-- **Canned Cypher too fake to exercise the agent** → acceptable: the agent's Cypher habits
-  get tuned in Phase 6 against the real graph; fixtures only need to unblock loop
-  development.
+- **Stub ownership answer goes the other way** (Phong ships it) → scope grows by the
+  replay engine (~a day); fixtures and conformance runner are identical either way, so
+  nothing here is wasted.
+- **Fixture PRs bottleneck on Karsten** → fixtures are additive JSON; agree in the
+  phase-1 review that fixture-only PRs get same-day rubber-stamp merges.
+- **Stub drifts from real CLI** → that's precisely what the conformance suite + shared
+  goldens exist to catch; contract rule already requires goldens to update in the same PR
+  as any contract change.
