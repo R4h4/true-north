@@ -1,0 +1,97 @@
+# Demo user fixtures — part of the interface contract (see /CONTRACT.md §1, §5).
+# Tokens are deliberately fake static strings; there is no real auth (non-goal).
+# Roles compile into the knowledge graph as (:Role)-[:CAN_READ]->(:Table) and
+# (:Role)-[:CAN_COMPUTE]->(:Metric) edges; metric denial is DERIVED at compile
+# time: a role cannot compute any metric that uses one of its masked columns
+# or a table it cannot read.
+
+users:
+  - token: tok-exec-mai
+    user_id: u_mai
+    name: "Mai"
+    title: "CEO"
+    role: executive
+
+  - token: tok-rm-south-duc
+    user_id: u_duc
+    name: "Đức"
+    title: "Regional Manager, South"
+    role: regional_manager
+    attributes:
+      region: "South"
+
+  - token: tok-mkt-lan
+    user_id: u_lan
+    name: "Lan"
+    title: "Marketing Operations"
+    role: marketing_ops
+
+  - token: tok-analyst-binh
+    user_id: u_binh
+    name: "Bình"
+    title: "Data Analyst"
+    role: data_analyst
+
+roles:
+  executive:
+    description: "Full metric and table access; PII still tokenized (nobody needs raw PII)"
+    tables: all
+    row_filters: []
+    masked_columns: []
+    tokenized_columns:
+      - fact_sales_lines.customer_id
+      - dim_customer.customer_id
+
+  regional_manager:
+    description: "Scoped to own region on store-grained facts; customer PII masked"
+    tables: all
+    row_filters:
+      # {region} resolves from the user's attributes at query time
+      - tables: [fact_sales_lines, fact_traffic, fact_inventory]
+        predicate: "store_id IN (SELECT store_id FROM dim_store WHERE region = '{region}')"
+        discloses_as: "dim_store.region = '{region}'"
+    masked_columns:
+      - dim_customer.province
+      - dim_customer.birth_year
+    tokenized_columns:
+      - fact_sales_lines.customer_id
+      - dim_customer.customer_id
+
+  marketing_ops:
+    description: "Campaign/revenue view: no inventory, no cost/margin, PII tokenized and banded"
+    tables:
+      - dim_store
+      - dim_sku
+      - dim_customer
+      - dim_promotion
+      - fact_sales_lines
+      - fact_returns
+      - fact_traffic
+      # fact_inventory deliberately absent -> ACCESS_DENIED_TABLE
+    row_filters: []
+    masked_columns:
+      - fact_sales_lines.cost_amount   # => gross_margin & derived metrics become ACCESS_DENIED_METRIC
+      - dim_sku.unit_cost
+      - dim_customer.province
+    transformed_columns:
+      - column: dim_customer.birth_year
+        transform: band_5y            # 1990 -> "1990-1994"
+    tokenized_columns:
+      - fact_sales_lines.customer_id
+      - dim_customer.customer_id
+
+  data_analyst:
+    description: "Full analytical access; identifiers tokenized (stable, joinable, not identifying)"
+    tables: all
+    row_filters: []
+    masked_columns: []
+    tokenized_columns:
+      - fact_sales_lines.customer_id
+      - dim_customer.customer_id
+
+tokenization:
+  # Stable deterministic tokens: same input -> same token within a demo run,
+  # so joins and counts still work on tokenized columns.
+  scheme: hmac_sha256_prefix
+  prefix: cust_tok_
+  length: 12
