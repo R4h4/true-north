@@ -233,11 +233,19 @@ body {
 }
 
 /* Greeting: a normal flow block above the chat (the .chat-pane > div flex:1
-   rule must not stretch it) - the input then starts right below it. */
+   rule must not stretch it) - the input then starts right below it.
+   Auto margins center the whole greeting+input+chips stack vertically on
+   tall panes, and collapse to 0 when content overflows so scroll still
+   reaches everything on short panes. */
 .chat-pane.empty .chat-hero {
   flex: 0 0 auto;
   min-height: auto;
   text-align: center;
+  margin-top: auto;
+}
+
+.chat-pane.empty > div:last-child {
+  margin-bottom: auto;
 }
 
 .hero-greeting {
@@ -245,7 +253,7 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 11px;
-  padding: 7vh 24px 26px;
+  padding: 20px 24px 26px;
 }
 
 .hero-greeting h3 {
