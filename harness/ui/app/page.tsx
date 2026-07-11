@@ -12,7 +12,7 @@ import {
   type AssistantMessageProps,
 } from "@copilotkit/react-ui";
 import "@copilotkit/react-ui/styles.css";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AskUserCard } from "../components/ask-user-card";
 import { BrandMark } from "../components/brand-mark";
 import { EmptyStateGreeting, SuggestionsPanel } from "../components/empty-state";
@@ -42,9 +42,11 @@ if (typeof window !== "undefined") {
 // Two governed tenants behind one CLI (tn --dataset). Persona ids are unique
 // across tenants; the agent server maps persona -> {token, dataset}, so the
 // frontend only ever sends the persona.
+// Labels are the industry, not the tenant brand - the dataset ids (retail /
+// shinhan) remain the CLI contract values and never surface in the UI.
 const DATASETS = [
-  { id: "retail", label: "Phong Vũ Retail", defaultPersona: "binh" },
-  { id: "shinhan", label: "Shinhan Finance", defaultPersona: "sujin" },
+  { id: "retail", label: "Retail Commerce", defaultPersona: "binh" },
+  { id: "shinhan", label: "Consumer Lending", defaultPersona: "sujin" },
 ];
 
 const PERSONAS: Record<string, { id: string; label: string }[]> = {
@@ -277,6 +279,72 @@ function Workbench({ dataset, persona }: { dataset: string; persona: string }) {
   );
 }
 
+// Data-source picker: a dropdown (the tenant list can grow; a segmented control
+// doesn't scale). Closes on outside-click and on selection.
+function DatasetDropdown({ value, onPick }: { value: string; onPick: (id: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  const current = DATASETS.find((d) => d.id === value) ?? DATASETS[0];
+
+  return (
+    <div className="dataset-dropdown" ref={ref}>
+      <button
+        className="dataset-trigger"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+      >
+        <span className="dataset-dot" aria-hidden="true" />
+        <span className="dataset-label">{current.label}</span>
+        <svg
+          className={open ? "dd-chev open" : "dd-chev"}
+          width="12"
+          height="12"
+          viewBox="0 0 12 12"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M3 4.5L6 7.5L9 4.5" />
+        </svg>
+      </button>
+      {open && (
+        <ul className="dataset-menu" role="listbox">
+          {DATASETS.map((d) => (
+            <li key={d.id}>
+              <button
+                className={d.id === value ? "active" : ""}
+                role="option"
+                aria-selected={d.id === value}
+                onClick={() => {
+                  onPick(d.id);
+                  setOpen(false);
+                }}
+              >
+                <span className="dataset-dot" aria-hidden="true" />
+                {d.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export default function Page() {
   const [dataset, setDataset] = useState("retail");
   const [persona, setPersona] = useState("binh");
@@ -298,18 +366,7 @@ export default function Page() {
         </div>
         <span className="tag">Governed BI</span>
         <div className="topbar-controls">
-          <div className="persona-picker dataset-picker">
-            {DATASETS.map((d) => (
-              <button
-                key={d.id}
-                className={d.id === dataset ? "active" : ""}
-                onClick={() => pickDataset(d.id)}
-              >
-                <span className="dataset-dot" aria-hidden="true" />
-                {d.label}
-              </button>
-            ))}
-          </div>
+          <DatasetDropdown value={dataset} onPick={pickDataset} />
           <div className="persona-picker">
             {(PERSONAS[dataset] ?? PERSONAS.retail).map((p) => (
               <button
