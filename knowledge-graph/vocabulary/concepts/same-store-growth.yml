@@ -1,0 +1,7 @@
+key: same-store-growth
+name: Same-store sales growth
+definition: >-
+  Like-for-like net revenue growth, restricted to stores open the full comparison window. Unambiguous — a single governed calculation, but see the same-store comparability constraint.
+aliases: [like-for-like growth, comparable sales, comp sales, lfl]
+variant_of: null
+measured_by: same_store_sales_growth

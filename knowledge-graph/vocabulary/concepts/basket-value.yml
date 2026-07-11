@@ -1,7 +1,7 @@
-key: basket_by_value
+key: basket-value
 name: Basket size by value
 definition: >-
   Average monetary value per basket.
 aliases: [value per basket, average order value, aov]
-variant_of: basket_size
+variant_of: basket-size
 measured_by: basket_value_avg

@@ -1,7 +1,7 @@
-key: basket_by_items
+key: basket-items
 name: Basket size by items
 definition: >-
   Average number of items per basket.
 aliases: [items per basket, units per order]
-variant_of: basket_size
+variant_of: basket-size
 measured_by: basket_items_avg

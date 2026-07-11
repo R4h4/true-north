@@ -68,7 +68,7 @@ def test_dimension_node_shape_no_type(access_index, fakes):
 
 def test_concept_and_constraint_have_no_access(access_index, fakes):
     ser = Serializer(access_index, "marketing_ops")
-    concept = fakes.Node("Concept", {"key": "customer_retention", "name": "Customer Retention",
+    concept = fakes.Node("Concept", {"key": "customer-retention", "name": "Customer Retention",
                                    "definition": "…", "aliases": ["retention"]})
     constraint = fakes.Node("Constraint", {"key": "b2b_value_skew", "statement": "…", "severity": "warning"})
     assert "_access" not in ser.value(concept)
@@ -97,19 +97,19 @@ def test_detail_record_shape_matches_fixture(access_index, fakes):
 
 def test_relationship_serialization(access_index, fakes):
     ser = Serializer(access_index, "data_analyst")
-    a = fakes.Node("Concept", {"key": "repeat_purchase_retention", "name": "n"})
+    a = fakes.Node("Concept", {"key": "repeat-purchase-retention", "name": "n"})
     b = fakes.Node("Metric", {"key": "repeat_purchase_rate_90d", "name": "n", "description": "d",
                             "type": "ratio", "unit": "ratio", "formula": "f", "version": "0.1"})
     rel = fakes.Rel("MEASURED_BY", a, b)
     out = ser.value(rel)
     assert out["_type"] == "MEASURED_BY"
-    assert out["_from"] == "repeat_purchase_retention"
+    assert out["_from"] == "repeat-purchase-retention"
     assert out["_to"] == "repeat_purchase_rate_90d"
 
 
 def test_path_serialization(access_index, fakes):
     ser = Serializer(access_index, "data_analyst")
-    a = fakes.Node("Concept", {"key": "basket_by_value", "name": "n"})
+    a = fakes.Node("Concept", {"key": "basket-value", "name": "n"})
     b = fakes.Node("Metric", {"key": "basket_value_avg", "name": "n", "description": "d",
                             "type": "ratio", "unit": "VND", "formula": "f", "version": "0.1"})
     rel = fakes.Rel("MEASURED_BY", a, b)

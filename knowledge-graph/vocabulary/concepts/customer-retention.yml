@@ -1,4 +1,4 @@
-key: customer_retention
+key: customer-retention
 name: Customer Retention
 definition: >-
   The degree to which customers keep transacting or stay active over time. Ambiguous: pick a variant.

@@ -1,4 +1,4 @@
-key: gmv_revenue
+key: gmv-revenue
 name: GMV / Revenue
 definition: >-
   Top-line sales value. Ambiguous: gross of returns vs net of returns; retail vs B2B-inclusive. Pick a variant and state the returns and B2B treatment.

@@ -1,4 +1,4 @@
-key: inventory_days_concept
+key: inventory-days
 name: Inventory days
 definition: >-
   Days of stock on hand at current sell-through. Unambiguous — a single governed calculation.

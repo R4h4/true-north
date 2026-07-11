@@ -28,7 +28,7 @@ def test_metric_nodes_match_semantic_layer(graph, semantic):
 
 def test_three_parents_have_no_measured_by(graph):
     measured_by_sources = {frm for frm, _ in _edges(graph, "MEASURED_BY")}
-    for parent in ("customer_retention", "gmv_revenue", "basket_size"):
+    for parent in ("customer-retention", "gmv-revenue", "basket-size"):
         assert parent not in measured_by_sources
 
 
@@ -38,12 +38,12 @@ def test_variants_each_measure_one_metric(graph):
     for src, tgt in mb:
         by_src.setdefault(src, []).append(tgt)
     expected = {
-        "repeat_purchase_retention": "repeat_purchase_rate_90d",
-        "member_activity_retention": "member_active_rate_30d",
-        "gmv_gross_concept": "gmv_gross",
-        "net_revenue_concept": "net_revenue",
-        "basket_by_items": "basket_items_avg",
-        "basket_by_value": "basket_value_avg",
+        "repeat-purchase-retention": "repeat_purchase_rate_90d",
+        "member-activity-retention": "member_active_rate_30d",
+        "gmv-gross": "gmv_gross",
+        "net-revenue": "net_revenue",
+        "basket-items": "basket_items_avg",
+        "basket-value": "basket_value_avg",
     }
     for concept, metric in expected.items():
         assert by_src.get(concept) == [metric]
@@ -51,9 +51,9 @@ def test_variants_each_measure_one_metric(graph):
 
 def test_variant_of_edges_point_to_parents(graph):
     vo = dict(_edges(graph, "VARIANT_OF"))
-    assert vo["repeat_purchase_retention"] == "customer_retention"
-    assert vo["net_revenue_concept"] == "gmv_revenue"
-    assert vo["basket_by_value"] == "basket_size"
+    assert vo["repeat-purchase-retention"] == "customer-retention"
+    assert vo["net-revenue"] == "gmv-revenue"
+    assert vo["basket-value"] == "basket-size"
 
 
 def test_computed_from_excludes_join_only_dims(graph):
@@ -87,7 +87,7 @@ def test_invariant_violation_detected(graph, semantic):
     from knowledge_graph.build import Edge
 
     bad = copy.deepcopy(graph)
-    bad.edges.append(Edge("MEASURED_BY", "Concept", "net_revenue_concept", "Metric", "gmv_gross"))
+    bad.edges.append(Edge("MEASURED_BY", "Concept", "net-revenue", "Metric", "gmv_gross"))
     with pytest.raises(AssertionError, match="invariant 1"):
         assert_invariants(bad, semantic)
 
