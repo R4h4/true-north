@@ -39,6 +39,8 @@ REQUIRED_METRIC_FIELDS = (
     "dimensions", "compute",
 )
 
+REQUIRED_TABLE_FIELDS = ("key", "description", "grain", "freshness_note")
+
 
 def _canonical_vocab_map(schema) -> dict[str, set]:
     """table.column -> the set of canonical values schema.py promises for it."""
@@ -91,6 +93,7 @@ def validate_semantic(
 
     metrics = _load_yaml_dir(semantic_dir / "metrics")
     dimensions = _load_yaml_dir(semantic_dir / "dimensions")
+    table_docs = _load_yaml_dir(semantic_dir / "tables")
 
     # --- Dimensions -------------------------------------------------------
     dim_types: dict[str, str] = {}
@@ -174,6 +177,34 @@ def validate_semantic(
                 errors.append(f"metric {stem}: dimension '{dkey}' is not a defined dimension")
 
         errors.extend(_validate_compute(stem, metric, tables, table_columns))
+
+    # --- Tables -----------------------------------------------------------
+    for stem, table in table_docs.items():
+        if not isinstance(table, dict):
+            errors.append(f"table {stem}.yml: not a mapping")
+            continue
+        key = table.get("key")
+        if key != stem:
+            errors.append(f"table {stem}.yml: key '{key}' does not match filename '{stem}'")
+        if key is not None and key not in tables:
+            errors.append(f"table {stem}: key '{key}' is not a table in schema.py")
+        for tfield in REQUIRED_TABLE_FIELDS:
+            if not table.get(tfield):
+                errors.append(f"table {stem}: missing required field '{tfield}'")
+
+    # Every table referenced by a metric measure must have a tables/*.yml entry.
+    referenced_tables: set[str] = set()
+    for metric in metrics.values():
+        if not isinstance(metric, dict):
+            continue
+        for measure in (metric.get("compute") or {}).get("measures", {}).values() or {}:
+            if isinstance(measure, dict) and measure.get("table"):
+                referenced_tables.add(measure["table"])
+    for tbl in sorted(referenced_tables):
+        if tbl not in table_docs:
+            errors.append(
+                f"table semantics: measure table '{tbl}' has no tables/{tbl}.yml entry"
+            )
 
     # --- Required contract metrics exist ---------------------------------
     for req in sorted(required_metric_keys):

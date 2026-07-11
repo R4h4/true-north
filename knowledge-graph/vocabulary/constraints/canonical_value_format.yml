@@ -1,0 +1,7 @@
+key: canonical_value_format
+statement: >-
+  Stored codes differ from business vocabulary. Channel is snake_case (in_store, web, app, b2b) — there is no 'offline'/'online' column; "offline" maps to in_store (decide B2B in/out), "online" to web+app. Province is one canonical long form (Ho Chi Minh City, never HCMC/Saigon; Ha Noi, never HN). Filtering on the business word returns zero rows silently.
+severity: warning
+constrains:
+  - dimension:channel
+  - table:fact_sales_lines

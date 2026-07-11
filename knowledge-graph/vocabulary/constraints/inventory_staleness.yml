@@ -1,0 +1,7 @@
+key: inventory_staleness
+statement: >-
+  The latest fact_inventory snapshot lags roughly a week behind the latest sales timestamp (MAX(snapshot_date) < MAX(DATE(ts))). Align sales to the inventory as-of date and report the snapshot date; do not imply inventory is current to the latest sale.
+severity: warning
+constrains:
+  - metric:inventory_days
+  - table:fact_inventory

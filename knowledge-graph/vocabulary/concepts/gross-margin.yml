@@ -1,0 +1,7 @@
+key: gross-margin
+name: Gross margin
+definition: >-
+  Net revenue minus cost of goods sold. Unambiguous — a single governed calculation.
+aliases: [margin, gross profit]
+variant_of: null
+measured_by: gross_margin

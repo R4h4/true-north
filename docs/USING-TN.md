@@ -32,13 +32,11 @@ Tokens: `tok-exec-mai` (executive, full access) · `tok-rm-south-duc` (regional 
 | `ACCESS_DENIED_TABLE` | Blocking resource is a table the role can't read (also used when a metric's table is unreadable — table precedence over metric) |
 | `ACCESS_DENIED_DIMENSION` | Dimension backed by a masked column for this role |
 | `QUERY_REJECTED` | Read-only surface — no Cypher writes, single statements only |
-| `AUTH_INVALID_TOKEN` / `INTERNAL` | Bad token / unexpected failure (on the stub: usually an un-fixtured request, see below) |
+| `AUTH_INVALID_TOKEN` / `INTERNAL` | Bad token / unexpected failure (e.g. warehouse data not generated — run the generator) |
 
-## Stub mode (current state)
+## Worked examples
 
-Until the real services land (phase 4), `tn` is a **replay stub**: only the fixtured requests below return answers; anything else returns `INTERNAL` with message "no replay fixture" (exit 1). Fixtures live in `contracts/examples/` (goldens) and `governance/fixtures/replay/`; fixture-only PRs adding more are welcome and cheap.
-
-### Fixtured requests
+The CLI runs the real services (DuckDB warehouse + Neo4j graph); any well-formed request is answered from live data, not a fixture list. Bring-up is one command: `make demo` (see the Makefile) starts Neo4j, generates the warehouse, compiles the graph, and runs a smoke.
 
 **Bootstrap / identity / catalog**
 
@@ -56,11 +54,13 @@ tn metrics describe gross_margin --token tok-mkt-lan   # denied-but-visible exam
 # revenue/GMV (tok-exec-mai):  '(?i).*(revenue|gmv).*'  resolve -> gross vs net variants
 # basket     (tok-analyst-binh): '(?i).*basket.*'       resolve -> items vs value variants
 tn kg query --token tok-analyst-binh "MATCH (c:Concept) WHERE c.name =~ '(?i).*retention.*' OR any(a IN c.aliases WHERE a =~ '(?i).*retention.*') OPTIONAL MATCH (c)<-[:VARIANT_OF]-(v:Concept)-[:MEASURED_BY]->(m:Metric) RETURN c, v, m"
-# metric detail (dims + caveats + tables); fixtured for: repeat_purchase_rate_90d, basket_value_avg (binh), net_revenue (mai)
+# metric detail (dims + caveats + tables)
 tn kg query --token tok-analyst-binh "MATCH (m:Metric {key: 'repeat_purchase_rate_90d'}) OPTIONAL MATCH (m)-[:HAS_DIMENSION]->(d:Dimension) OPTIONAL MATCH (k:Constraint)-[:CONSTRAINS]->(m) OPTIONAL MATCH (m)-[:COMPUTED_FROM]->(t:Table) RETURN m, collect(DISTINCT d) AS dims, collect(DISTINCT k) AS caveats, collect(DISTINCT t) AS tables"
 # access annotation example (lan): net_revenue readable, gross_margin _access.readable=false
 tn kg query --token tok-mkt-lan "MATCH (m:Metric) WHERE m.key IN ['net_revenue','gross_margin'] OPTIONAL MATCH (k:Constraint)-[:CONSTRAINS]->(m) RETURN m, collect(k) AS caveats"
 ```
+
+Well-formed Cypher over labels or property keys that don't exist is not an error: it returns `ok: true` with an empty `records` list (Cypher's `OPTIONAL MATCH`/no-match semantics), not `METRIC_NOT_FOUND` or `INTERNAL`. Only writes and multi-statement input are rejected (`QUERY_REJECTED`); malformed Cypher is `INVALID_QUERY`.
 
 **Data queries**
 
@@ -82,6 +82,12 @@ tn query --token tok-mkt-lan      --metric gross_margin --group-by category # AC
 tn query --token tok-mkt-lan      --metric inventory_days                   # ACCESS_DENIED_TABLE (unreadable table)
 tn kg query --token tok-analyst-binh "CREATE (m:Metric {key: 'fake'}) RETURN m"  # QUERY_REJECTED
 ```
+
+## `applied_permissions` on the kg surface
+
+`tn query` (warehouse) always discloses every governance effect that touched the query — row filters, tokenization, banding, masking. `tn kg query` discloses a **strict subset**: only the **masked and banded columns** on the physical tables that the returned governed nodes (`Metric`/`Table`/`Dimension`) resolve to. These are exactly the effects that explain the `_access` annotations on the nodes — e.g. a metric comes back with `_access.readable=false, reason: "uses masked column cost_amount"`, and `applied_permissions` carries the matching `column_masked` object.
+
+Row filters and tokenization are **not** disclosed on the graph surface: a graph query returns node/edge metadata, never governed row data, so there is nothing for a row filter or a per-row token to have acted on. Disclosing them would imply row-level governance that didn't happen. (Example: for `tok-mkt-lan`, the cost mask that hides `gross_margin` is disclosed; her tokenized `customer_id` on the same touched table is not.)
 
 ## Conformance
 

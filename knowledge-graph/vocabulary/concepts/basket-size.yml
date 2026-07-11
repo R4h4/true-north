@@ -1,0 +1,7 @@
+key: basket-size
+name: Basket size
+definition: >-
+  How big a basket is. Ambiguous: item count vs monetary value. B2B baskets are few but huge in value, so the two tell different stories.
+aliases: [basket size, average basket, order size, cart size]
+variant_of: null
+measured_by: null

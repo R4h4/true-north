@@ -1,0 +1,16 @@
+key: category
+name: Product category
+description: Top-level product category of the sold SKU.
+type: categorical
+source: dim_sku.category
+canonical_values:
+  - Laptop
+  - Desktop PC
+  - Monitor
+  - PC Component
+  - Gaming Gear
+  - Accessory
+  - Phone & Tablet
+  - Office Equipment
+  - Networking
+  - Home Appliance

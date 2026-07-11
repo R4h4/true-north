@@ -1,0 +1,44 @@
+key: subcategory
+name: Product subcategory
+description: Subcategory within the product category of the sold SKU.
+type: categorical
+source: dim_sku.subcategory
+canonical_values:
+  - Ultrabook
+  - Gaming Laptop
+  - Business Laptop
+  - MacBook
+  - Gaming PC
+  - Office PC
+  - Custom Build
+  - Workstation
+  - Office Monitor
+  - Gaming Monitor
+  - Professional Monitor
+  - CPU
+  - GPU
+  - RAM
+  - SSD
+  - Mainboard
+  - PSU
+  - Cooling
+  - Mechanical Keyboard
+  - Gaming Mouse
+  - Headset
+  - Gaming Chair
+  - Keyboard & Mouse
+  - Webcam
+  - Dock & Cable
+  - Bag & Sleeve
+  - Smartphone
+  - Tablet
+  - Phone Accessory
+  - Printer
+  - Scanner
+  - Projector
+  - Router
+  - Switch
+  - Access Point
+  - Air Purifier
+  - Robot Vacuum
+  - Small Appliance
