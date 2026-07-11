@@ -11,3 +11,11 @@ __pycache__/
 # Generated data: keep the directory, ignore its parquet contents
 **/data/parquet/*
 !**/data/parquet/.gitkeep
+
+# design-sync: staged converter scripts + generated bundle + machine state
+# (.design-sync/config.json, NOTES.md, conventions.md, previews/ ARE committed)
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules
