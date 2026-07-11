@@ -113,6 +113,16 @@ body {
   height: 100%;
 }
 
+/* Hide CopilotKit branding: the dev-inspector floating button (custom element)
+   and the chat footer (MIT-licensed, hiding is permitted) */
+cpk-web-inspector {
+  display: none !important;
+}
+
+.copilotKitChat .poweredBy {
+  display: none !important;
+}
+
 .kg-pane {
   display: flex;
   flex-direction: column;
