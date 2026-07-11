@@ -17,6 +17,13 @@ from strands.models.openai_responses import OpenAIResponsesModel
 DEFAULT_OPENAI_MODEL_ID = "gpt-5.5"
 DEFAULT_MANTLE_MODEL_ID = "openai.gpt-5.5"
 
+# Reasoning summaries stream as AG-UI Reasoning events (ag-ui-strands maps
+# strands' reasoningText deltas), making the agent's planning visible in the
+# UI. Summaries only stream when an effort level is set explicitly; 'low'
+# keeps the tool loop fast. The Responses provider drops reasoning blocks
+# from follow-up request history (warning only), so tool loops are unaffected.
+_PARAMS = {"reasoning": {"effort": "low", "summary": "auto"}}
+
 
 def build_model() -> OpenAIResponsesModel:
     mantle_region = os.getenv("BEDROCK_MANTLE_REGION")
@@ -32,6 +39,7 @@ def build_model() -> OpenAIResponsesModel:
         return OpenAIResponsesModel(
             bedrock_mantle_config={"region": mantle_region},
             model_id=os.getenv("MODEL_ID", DEFAULT_MANTLE_MODEL_ID),
+            params=_PARAMS,
             stateful=False,
         )
 
@@ -42,6 +50,7 @@ def build_model() -> OpenAIResponsesModel:
         return OpenAIResponsesModel(
             client_args=client_args,
             model_id=os.getenv("MODEL_ID", DEFAULT_OPENAI_MODEL_ID),
+            params=_PARAMS,
             stateful=False,
         )
 

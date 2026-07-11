@@ -192,6 +192,32 @@ cpk-web-inspector {
   min-height: 0;
 }
 
+/* Live reasoning stream at the top of the side pane */
+.thinking-box {
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+
+.thinking-box h2 {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 14px 16px 6px;
+}
+
+.thinking-scroll {
+  max-height: 150px;
+  overflow-y: auto;
+  padding: 0 16px 12px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--ink-secondary);
+  white-space: pre-wrap;
+}
+
 .kg-pane h2 {
   font-size: 11px;
   font-weight: 600;
@@ -241,6 +267,52 @@ cpk-web-inspector {
   background: var(--surface-subtle);
   font-size: 11px;
   color: var(--ink-secondary);
+}
+
+/* Agent step timeline: one compact row per governed tool call */
+.tool-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0 3px 2px;
+  font-size: 12px;
+  color: var(--ink-secondary);
+}
+
+.tool-step .step-label {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.tool-step .step-args {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.step-spinner {
+  width: 11px;
+  height: 11px;
+  flex-shrink: 0;
+  border: 2px solid var(--border-strong);
+  border-top-color: var(--green);
+  border-radius: 50%;
+  animation: step-spin 0.7s linear infinite;
+}
+
+@keyframes step-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step-spinner {
+    animation: none;
+  }
 }
 
 /* KPI single-value card: Holistics stat-card language */

@@ -3,7 +3,7 @@
 import { CopilotKit, useCoAgent, useCopilotAction } from "@copilotkit/react-core";
 import { CopilotChat } from "@copilotkit/react-ui";
 import "@copilotkit/react-ui/styles.css";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChartView, type ChartPayload } from "../components/chart-view";
 import { KgPanel, type KgGraph } from "../components/kg-panel";
 
@@ -32,6 +32,51 @@ const PERSONAS = [
   { id: "binh", label: "Bình · Analyst" },
 ];
 
+// Human-readable labels for the governed tools; the step timeline renders
+// only tools listed here (render_chart / ask_user have their own renderers).
+const TOOL_STEPS: Record<string, string> = {
+  get_kg_schema: "Loading knowledge-graph schema",
+  resolve_term: "Resolving business term",
+  get_metric_context: "Loading metric context",
+  check_metric_access: "Checking metric access",
+  list_metrics: "Listing governed metrics",
+  describe_metric: "Inspecting metric definition",
+  query_warehouse: "Running governed query",
+};
+
+const ARG_KEYS = ["term", "metric_key", "metric_keys", "metric", "group_by", "time_grain", "filter", "start", "end"];
+
+function argSummary(args: any): string {
+  if (!args || typeof args !== "object") return "";
+  const parts: string[] = [];
+  for (const key of ARG_KEYS) {
+    const v = args[key];
+    if (v && String(v).trim()) parts.push(`${key}=${Array.isArray(v) ? v.join(",") : v}`);
+  }
+  return parts.join("  ");
+}
+
+function StepCheck() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+      <path d="M2.5 6.5 5 9l4.5-6" stroke="#259b6c" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+// One row of the agent's visible act loop: tool choice + arguments, live.
+function ToolStep({ name, args, status }: { name: string; args: any; status: string }) {
+  const label = TOOL_STEPS[name];
+  if (!label) return <></>;
+  return (
+    <div className="tool-step">
+      {status === "complete" ? <StepCheck /> : <span className="step-spinner" aria-label="running" />}
+      <span className="step-label">{label}</span>
+      <span className="step-args">{argSummary(args)}</span>
+    </div>
+  );
+}
+
 // Compass-in-hexagon brand mark, drawn in the brand green.
 function BrandMark() {
   return (
@@ -47,9 +92,26 @@ function BrandMark() {
   );
 }
 
+// Live reasoning-summary stream (mirrored into shared state by the server,
+// since CopilotKit's chat drops AG-UI reasoning events). Auto-follows.
+function ThinkingBox({ text }: { text: string }) {
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (box.current) box.current.scrollTop = box.current.scrollHeight;
+  }, [text]);
+  return (
+    <div className="thinking-box">
+      <h2>Agent reasoning</h2>
+      <div className="thinking-scroll" ref={box}>
+        {text.replace(/\*\*/g, "")}
+      </div>
+    </div>
+  );
+}
+
 function Workbench() {
   // Shared state streamed by the backend (STATE_SNAPSHOT events).
-  const { state } = useCoAgent<{ kg_context?: KgGraph }>({ name: "true-north" });
+  const { state } = useCoAgent<{ kg_context?: KgGraph; thinking?: string }>({ name: "true-north" });
 
   // ask_user: the agent's human-in-the-loop tool. Rendering happens here;
   // the adapter proxies it to the model as a frontend tool per thread.
@@ -75,6 +137,13 @@ function Workbench() {
         )}
       </div>
     ),
+  });
+
+  // Wildcard render: every backend tool call streams as an AG-UI tool event;
+  // this turns each one into a visible step row (plan -> tool choice -> act).
+  useCopilotAction({
+    name: "*",
+    render: ({ name, args, status }: any) => <ToolStep name={name} args={args} status={status} />,
   });
 
   // render_chart runs in Python (rows come from the governed envelope);
@@ -103,6 +172,7 @@ function Workbench() {
         />
       </div>
       <div className="kg-pane">
+        {(state?.thinking ?? "").trim() && <ThinkingBox text={state!.thinking!} />}
         <h2>What the agent knows so far</h2>
         <p className="hint">Live knowledge-graph context · locked = exists but not accessible to your role</p>
         <div className="kg-canvas">

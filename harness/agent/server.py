@@ -19,13 +19,20 @@ Design decisions (phase-3 plan + code review):
 
 import os
 import pathlib
+import time
 from typing import Any, AsyncIterator
 
 from dotenv import load_dotenv
 
 load_dotenv(pathlib.Path(__file__).resolve().parents[1] / ".env")
 
-from ag_ui.core import RunAgentInput  # noqa: E402
+from ag_ui.core import (  # noqa: E402
+    EventType,
+    ReasoningMessageContentEvent,
+    ReasoningMessageEndEvent,
+    RunAgentInput,
+    StateSnapshotEvent,
+)
 from ag_ui_strands import (  # noqa: E402
     StrandsAgent,
     StrandsAgentConfig,
@@ -48,6 +55,16 @@ DEFAULT_PERSONA = "binh"
 
 _graphs_by_thread: dict[str, dict] = {}
 _turns_by_thread: dict[str, int] = {}
+_thinking_by_thread: dict[str, str] = {}
+
+
+def _shared_state(thread_id: str) -> dict:
+    """Full shared-state payload. AG-UI STATE_SNAPSHOT replaces the whole
+    state object, so every emitter must carry every key or it wipes the rest."""
+    return {
+        "kg_context": _graphs_by_thread.get(thread_id) or empty_graph(),
+        "thinking": _thinking_by_thread.get(thread_id, ""),
+    }
 
 
 def _kg_state(ctx) -> dict | None:
@@ -55,7 +72,7 @@ def _kg_state(ctx) -> dict | None:
     thread_id = ctx.input_data.thread_id or "default"
     graph = _graphs_by_thread.setdefault(thread_id, empty_graph())
     merge_envelope(graph, ctx.result_data)
-    return {"kg_context": graph}
+    return _shared_state(thread_id)
 
 
 class GovernedStrandsAgent(StrandsAgent):
@@ -85,8 +102,33 @@ class GovernedStrandsAgent(StrandsAgent):
 
         current_token.set(token)
         reset_run_cache()
+
+        # CopilotKit's chat UI drops AG-UI Reasoning events, so mirror the
+        # model's reasoning summaries into shared state (same channel as the
+        # KG panel). Throttled: one snapshot per ~0.3s, plus a final flush.
+        _thinking_by_thread[thread_id] = ""
+        last_emit = 0.0
+        cleared = False
+
+        def _snapshot() -> StateSnapshotEvent:
+            return StateSnapshotEvent(
+                type=EventType.STATE_SNAPSHOT, snapshot=_shared_state(thread_id)
+            )
+
         async for event in super().run(input_data):
             yield event
+            if not cleared:
+                # First event was RUN_STARTED: clear the previous turn's text.
+                cleared = True
+                yield _snapshot()
+            if isinstance(event, ReasoningMessageContentEvent):
+                _thinking_by_thread[thread_id] += event.delta
+                if time.monotonic() - last_emit > 0.3:
+                    last_emit = time.monotonic()
+                    yield _snapshot()
+            elif isinstance(event, ReasoningMessageEndEvent):
+                _thinking_by_thread[thread_id] += "\n\n"
+                yield _snapshot()
 
     async def _refusal_run(self, input_data: RunAgentInput, reason: str):
         from ag_ui.core import (
