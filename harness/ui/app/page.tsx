@@ -15,6 +15,7 @@ import "@copilotkit/react-ui/styles.css";
 import { useState } from "react";
 import { AskUserCard } from "../components/ask-user-card";
 import { BrandMark } from "../components/brand-mark";
+import { EmptyStateGreeting, SuggestionsPanel } from "../components/empty-state";
 import { ChartView, type ChartPayload } from "../components/chart-view";
 import { KgPanel, type KgGraph } from "../components/kg-panel";
 import { Thoughts } from "../components/thoughts";
@@ -134,8 +135,8 @@ function Workbench({ persona }: { persona: string }) {
   // useCoAgent's `running` is true from mount when an agent is pinned).
   const [asked, setAsked] = useState(false);
 
-  // Conversation starters, rendered natively by CopilotChat until the first
-  // user message; tailored per persona.
+  // Conversation starters per persona, rendered through SuggestionsPanel
+  // (RenderSuggestionsList) so clicks use the chat's own send path.
   useCopilotChatSuggestions(
     {
       suggestions: (SUGGESTIONS[persona] ?? []).map((q) => ({ title: q, message: q })),
@@ -189,20 +190,12 @@ function Workbench({ persona }: { persona: string }) {
 
   return (
     <div className="main">
-      <div className="chat-pane">
-        {!asked && (
-          <div className="chat-hero">
-            <BrandMark size={58} />
-            <h3>Ask your governed data anything</h3>
-            <p>
-              Every answer is resolved through the semantic layer — one definition of the truth,
-              per persona access policy.
-            </p>
-          </div>
-        )}
+      <div className={asked ? "chat-pane" : "chat-pane empty"}>
+        {!asked && <EmptyStateGreeting />}
         <CopilotChat
           labels={{ title: "True North", initial: "" }}
           AssistantMessage={AssistantMessageWithThoughts}
+          RenderSuggestionsList={SuggestionsPanel}
           onSubmitMessage={() => setAsked(true)}
         />
       </div>

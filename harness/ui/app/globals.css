@@ -182,35 +182,169 @@ body {
   to { opacity: 1; }
 }
 
-/* Empty-state hero: shown until the first user message */
-.chat-hero {
-  position: absolute;
-  inset: 0 0 140px;
-  /* .copilotKitChat is a flex-item sibling with z-index 30 - the hero must
-     sit above the (empty) message list but stays pointer-transparent */
-  z-index: 31;
-  pointer-events: none;
+/* Empty-state (Claude-style): the message list collapses, the real input
+   centers in the pane, the hero overlay puts the greeting above it and the
+   sources bar + suggestion chips below it. Everything reverts to the pinned
+   bottom-input layout once the first message is sent. */
+.chat-pane.empty .copilotKitMessagesContainer {
+  display: none;
+}
+
+/* The messages block keeps only its footer (the suggestions panel) and moves
+   BELOW the input; both center as one column in the pane. */
+.chat-pane.empty .copilotKitMessages {
+  flex: 0 0 auto;
+  order: 2;
+  overflow: visible;
+  padding: 0;
+}
+
+.chat-pane.empty .copilotKitChatBody {
+  justify-content: flex-start;
+}
+
+.chat-pane.empty .copilotKitInputContainer {
+  order: 1;
+  width: min(660px, 88%);
+  margin: 0 auto;
+}
+
+.chat-pane.empty .copilotKitInput {
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
+  box-shadow: var(--shadow-card);
+}
+
+/* Greeting: a normal flow block above the chat (the .chat-pane > div flex:1
+   rule must not stretch it) - the input then starts right below it. */
+.chat-pane.empty .chat-hero {
+  flex: 0 0 auto;
+  min-height: auto;
+  text-align: center;
+}
+
+.hero-greeting {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 14px;
-  text-align: center;
-  padding: 24px;
+  gap: 11px;
+  padding: 7vh 24px 26px;
 }
 
-.chat-hero h3 {
+.hero-greeting h3 {
   font-size: 17px;
   font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--ink);
 }
 
-.chat-hero p {
+.hero-greeting p {
   font-size: 13px;
   line-height: 1.55;
   color: var(--ink-secondary);
-  max-width: 380px;
+  max-width: 400px;
+}
+
+/* Sources bar + chips: rendered in flow by the suggestions slot, directly
+   below the input in empty mode */
+.suggestions-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 13px;
+  padding: 14px 24px 0;
+}
+
+.sources-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: min(660px, 100%);
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  padding: 9px 12px 9px 16px;
+  font-size: 12.5px;
+  color: var(--ink-secondary);
+}
+
+.sources-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sources-tiles {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.source-tile {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  cursor: default;
+}
+
+.sources-close {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.sources-close:hover {
+  color: var(--ink-secondary);
+  background: var(--border);
+}
+
+.hero-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 22px;
+}
+
+.hero-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  background: transparent;
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--ink-secondary);
+  cursor: pointer;
+  transition: color 150ms ease, background 150ms ease;
+}
+
+.hero-chip svg {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+
+.hero-chip:hover {
+  color: var(--ink);
+  background: var(--surface-subtle);
+}
+
+.hero-chip:hover svg {
+  color: var(--green-dark);
 }
 
 .chat-pane .copilotKitMessage {
@@ -234,30 +368,6 @@ body {
   line-height: 1.62;
   color: var(--ink);
   max-width: 640px;
-}
-
-/* Suggestion chips as pills (hover shifts to the brand green) */
-.chat-pane .copilotKitChatSuggestion,
-.chat-pane [class*="suggestion" i] button,
-.chat-pane button[class*="suggestion" i] {
-  border: 1px solid var(--border-strong);
-  background: var(--surface);
-  color: var(--ink-secondary);
-  border-radius: 99px;
-  padding: 6px 13px;
-  font-size: 12.5px;
-  font-family: inherit;
-  cursor: pointer;
-  box-shadow: var(--shadow-card);
-  transition: border-color 150ms ease, color 150ms ease, background 150ms ease;
-}
-
-.chat-pane .copilotKitChatSuggestion:hover,
-.chat-pane [class*="suggestion" i] button:hover,
-.chat-pane button[class*="suggestion" i]:hover {
-  border-color: var(--green);
-  color: var(--green-dark);
-  background: var(--green-tint);
 }
 
 /* Input row: white field with a hairline border, green focus ring */
