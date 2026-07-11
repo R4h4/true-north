@@ -1,0 +1,16 @@
+{
+  "request": {"argv": ["tn", "kg", "query", "--token", "tok-analyst-binh", "CREATE (m:Metric {key: 'fake'}) RETURN m"]},
+  "response": {
+    "contract_version": "0.3",
+    "ok": false,
+    "user": {"id": "u_binh", "role": "data_analyst"},
+    "result": null,
+    "metadata": {},
+    "warnings": [],
+    "error": {
+      "code": "QUERY_REJECTED",
+      "message": "write operations are not allowed on the knowledge graph",
+      "details": {"reason": "statement contains CREATE"}
+    }
+  }
+}

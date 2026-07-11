@@ -1,0 +1,21 @@
+{
+  "request": {"argv": ["tn", "query", "--token", "tok-exec-mai", "--metric", "revenue"]},
+  "response": {
+    "contract_version": "0.3",
+    "ok": false,
+    "user": {"id": "u_mai", "role": "executive"},
+    "result": null,
+    "metadata": {},
+    "warnings": [],
+    "error": {
+      "code": "METRIC_NOT_FOUND",
+      "message": "'revenue' is not a metric key; it matches multiple governed definitions — ask the user which one",
+      "details": {
+        "candidates": [
+          {"key": "gmv_gross", "name": "GMV (gross)", "definition": "Gross merchandise value before returns"},
+          {"key": "net_revenue", "name": "Net revenue", "definition": "Sales net of returns"}
+        ]
+      }
+    }
+  }
+}

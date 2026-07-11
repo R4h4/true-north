@@ -1,2 +1,2 @@
 [tool.uv.workspace]
-members = ["source"]
+members = ["source", "governance", "knowledge-graph", "harness"]

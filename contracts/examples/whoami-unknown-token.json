@@ -1,0 +1,12 @@
+{
+  "request": {"argv": ["tn", "whoami", "--token", "tok-nobody"]},
+  "response": {
+    "contract_version": "0.3",
+    "ok": false,
+    "user": null,
+    "result": null,
+    "metadata": {},
+    "warnings": [],
+    "error": {"code": "AUTH_INVALID_TOKEN", "message": "unknown token", "details": null}
+  }
+}
