@@ -284,7 +284,9 @@ def write_audit(
 
 
 def _main() -> None:
-    load_policy_to_db()
+    # Honor TN_USERS_YAML here too: the loader must hash the same authored file
+    # the runtime staleness check compares against, or the warning misfires.
+    load_policy_to_db(users_yaml=authored_users_yaml())
     print(f"policy loaded into {resolve_dsn()}")
 
 
