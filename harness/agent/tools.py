@@ -18,6 +18,10 @@ from strands import tool
 from agent.tn_client import run_tn
 
 current_token: ContextVar[str] = ContextVar("tn_token")
+# Tenant selector: --dataset is a GLOBAL tn option (flag > env > default), so
+# it goes before the subcommand. Defaults to retail so existing callers
+# (smoke scripts, gates) behave exactly as before.
+current_dataset: ContextVar[str] = ContextVar("tn_dataset", default="retail")
 # Per-run idempotency cache: identical (args) tuples are served from cache so
 # the agent can never hammer the CLI with a repeated failing call.
 _run_cache: ContextVar[dict] = ContextVar("tn_run_cache")
@@ -53,6 +57,7 @@ _ACCESS_CHECK = (
 
 def _with_token(args: list[str]) -> dict[str, Any]:
     token = current_token.get()
+    dataset = current_dataset.get()
     try:
         cache = _run_cache.get()
     except LookupError:
@@ -60,7 +65,7 @@ def _with_token(args: list[str]) -> dict[str, Any]:
         # discarded on return, so this fallback dict is per-call only. Callers
         # must go through run_turn, which seeds the cache in the outer context.
         cache = {}
-    key = (token, *args)
+    key = (dataset, token, *args)
     if key in cache:
         cached = dict(cache[key])
         cached["_note"] = (
@@ -68,7 +73,7 @@ def _with_token(args: list[str]) -> dict[str, Any]:
             "Do not call again - act on it or tell the user."
         )
         return cached
-    envelope = run_tn(args + ["--token", token])
+    envelope = run_tn(["--dataset", dataset, *args, "--token", token])
     cache[key] = envelope
     return envelope
 
@@ -197,7 +202,7 @@ def query_warehouse(
 
 def kg_schema() -> dict:
     """Bootstrap call (no token needed): labels, invariants, canonical Cypher."""
-    return run_tn(["kg", "schema"])
+    return run_tn(["--dataset", current_dataset.get(), "kg", "schema"])
 
 
 @tool

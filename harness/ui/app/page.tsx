@@ -12,7 +12,7 @@ import {
   type AssistantMessageProps,
 } from "@copilotkit/react-ui";
 import "@copilotkit/react-ui/styles.css";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AskUserCard } from "../components/ask-user-card";
 import { BrandMark } from "../components/brand-mark";
 import { EmptyStateGreeting, SuggestionsPanel } from "../components/empty-state";
@@ -39,18 +39,40 @@ if (typeof window !== "undefined") {
   }
 }
 
-const PERSONAS = [
-  { id: "mai", label: "Executive" },
-  { id: "duc", label: "RM South" },
-  { id: "lan", label: "Marketing" },
-  { id: "binh", label: "Analyst" },
+// Two governed tenants behind one CLI (tn --dataset). Persona ids are unique
+// across tenants; the agent server maps persona -> {token, dataset}, so the
+// frontend only ever sends the persona.
+// Labels are the industry, not the tenant brand - the dataset ids (retail /
+// shinhan) remain the CLI contract values and never surface in the UI.
+const DATASETS = [
+  { id: "retail", label: "Retail Commerce", defaultPersona: "binh" },
+  { id: "shinhan", label: "Consumer Lending", defaultPersona: "sujin" },
 ];
+
+const PERSONAS: Record<string, { id: string; label: string }[]> = {
+  retail: [
+    { id: "mai", label: "Executive" },
+    { id: "duc", label: "RM South" },
+    { id: "lan", label: "Marketing" },
+    { id: "binh", label: "Analyst" },
+  ],
+  shinhan: [
+    { id: "sujin", label: "CEO" },
+    { id: "minh", label: "Risk" },
+    { id: "thao", label: "Collections South" },
+    { id: "long", label: "Partnerships" },
+  ],
+};
+
+const PLACEHOLDERS: Record<string, string> = {
+  retail: "Ask about revenue, margin, retention — anything in your data…",
+  shinhan: "Ask about disbursements, NPL, collections — anything in your data…",
+};
 
 // Conversation starters per persona - each exercises a governed path that
 // demos well for that role (KPI, trend, row filter, denial, ambiguity...).
-// Access posture per persona - mirrors the governed policy store (Postgres,
-// hydrated by governance.pg): Mai/Binh read everything, Duc is row-filtered
-// to South, Lan is denied cost & margin metrics.
+// Access posture per persona - mirrors each tenant's governed policy store
+// (users.yaml -> Postgres via governance.pg).
 const ACCESS: Record<string, { label: string; hint: string; cls: string }> = {
   mai: {
     label: "Full model access",
@@ -71,6 +93,26 @@ const ACCESS: Record<string, { label: string; hint: string; cls: string }> = {
     label: "Full model access",
     hint: "Analyst — every governed metric in the Sales domain is readable.",
     cls: "kg-badge badge-green",
+  },
+  sujin: {
+    label: "Full model access",
+    hint: "CEO — every governed lending metric is readable.",
+    cls: "kg-badge badge-green",
+  },
+  minh: {
+    label: "Full model access",
+    hint: "Head of Risk — full delinquency and restructuring visibility.",
+    cls: "kg-badge badge-green",
+  },
+  thao: {
+    label: "Row filter · South",
+    hint: "Collections — queries are filtered to southern provinces; loan pricing is masked.",
+    cls: "kg-badge badge-amber",
+  },
+  long: {
+    label: "Loan performance restricted",
+    hint: "Partnerships — delinquency and collections tables are denied by policy.",
+    cls: "kg-badge badge-red",
   },
 };
 
@@ -94,6 +136,26 @@ const SUGGESTIONS: Record<string, string[]> = {
     "How is our customer retention doing by channel?",
     "What is our gross margin by category?",
     "What is the average basket value by channel?",
+  ],
+  sujin: [
+    "How is our delinquency doing by product?",
+    "What is our total disbursed amount?",
+    "Show me the monthly NPL trend for 2025",
+  ],
+  minh: [
+    "How is our NPL ratio doing by product?",
+    "Show me the monthly delinquency trend for 2025",
+    "How are collections recovering by bucket?",
+  ],
+  thao: [
+    "How are collections doing in my region?",
+    "What did we collect this year by product?",
+    "How is delinquency trending in my provinces?",
+  ],
+  long: [
+    "How are disbursements doing by partner?",
+    "How is our delinquency doing by partner?",
+    "Which metrics can I access?",
   ],
 };
 
@@ -125,7 +187,7 @@ function AssistantMessageWithThoughts(props: AssistantMessageProps) {
   );
 }
 
-function Workbench({ persona }: { persona: string }) {
+function Workbench({ dataset, persona }: { dataset: string; persona: string }) {
   // Shared state streamed by the backend (STATE_SNAPSHOT events).
   const { state } = useCoAgent<{ kg_context?: KgGraph; thinking?: string }>({ name: "true-north" });
 
@@ -196,7 +258,7 @@ function Workbench({ persona }: { persona: string }) {
           labels={{
             title: "True North",
             initial: "",
-            placeholder: "Ask about revenue, margin, retention — anything in your data…",
+            placeholder: PLACEHOLDERS[dataset] ?? PLACEHOLDERS.retail,
           }}
           AssistantMessage={AssistantMessageWithThoughts}
           RenderSuggestionsList={SuggestionsPanel}
@@ -217,8 +279,84 @@ function Workbench({ persona }: { persona: string }) {
   );
 }
 
+// Data-source picker: a dropdown (the tenant list can grow; a segmented control
+// doesn't scale). Closes on outside-click and on selection.
+function DatasetDropdown({ value, onPick }: { value: string; onPick: (id: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  const current = DATASETS.find((d) => d.id === value) ?? DATASETS[0];
+
+  return (
+    <div className="dataset-dropdown" ref={ref}>
+      <button
+        className="dataset-trigger"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+      >
+        <span className="dataset-dot" aria-hidden="true" />
+        <span className="dataset-label">{current.label}</span>
+        <svg
+          className={open ? "dd-chev open" : "dd-chev"}
+          width="12"
+          height="12"
+          viewBox="0 0 12 12"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M3 4.5L6 7.5L9 4.5" />
+        </svg>
+      </button>
+      {open && (
+        <ul className="dataset-menu" role="listbox">
+          {DATASETS.map((d) => (
+            <li key={d.id}>
+              <button
+                className={d.id === value ? "active" : ""}
+                role="option"
+                aria-selected={d.id === value}
+                onClick={() => {
+                  onPick(d.id);
+                  setOpen(false);
+                }}
+              >
+                <span className="dataset-dot" aria-hidden="true" />
+                {d.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export default function Page() {
+  const [dataset, setDataset] = useState("retail");
   const [persona, setPersona] = useState("binh");
+
+  // Switching the data source also switches the persona row - land on that
+  // tenant's default persona so the session is never a cross-tenant mix.
+  const pickDataset = (id: string) => {
+    if (id === dataset) return;
+    setDataset(id);
+    setPersona(DATASETS.find((d) => d.id === id)?.defaultPersona ?? "binh");
+  };
+
   return (
     <div className="shell">
       <div className="topbar">
@@ -227,28 +365,32 @@ export default function Page() {
           <h1>True North</h1>
         </div>
         <span className="tag">Governed BI</span>
-        <div className="persona-picker">
-          {PERSONAS.map((p) => (
-            <button
-              key={p.id}
-              className={p.id === persona ? "active" : ""}
-              onClick={() => setPersona(p.id)}
-            >
-              {p.label}
-            </button>
-          ))}
+        <div className="topbar-controls">
+          <DatasetDropdown value={dataset} onPick={pickDataset} />
+          <div className="persona-picker">
+            {(PERSONAS[dataset] ?? PERSONAS.retail).map((p) => (
+              <button
+                key={p.id}
+                className={p.id === persona ? "active" : ""}
+                onClick={() => setPersona(p.id)}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
-      {/* key={persona}: switching persona starts a fresh thread - tokens never
-          mix mid-conversation (matches the backend's per-session freeze). */}
+      {/* key includes dataset AND persona: any switch starts a fresh thread -
+          tokens and tenants never mix mid-conversation (matches the backend's
+          per-session freeze). */}
       <CopilotKit
-        key={persona}
+        key={`${dataset}:${persona}`}
         runtimeUrl="/api/copilotkit"
         agent="true-north"
         properties={{ persona }}
         showDevConsole={false}
       >
-        <Workbench persona={persona} />
+        <Workbench dataset={dataset} persona={persona} />
       </CopilotKit>
     </div>
   );

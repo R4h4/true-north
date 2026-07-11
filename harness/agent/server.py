@@ -42,14 +42,23 @@ from ag_ui_strands import (  # noqa: E402
 
 from agent.governed_agent import build_agent  # noqa: E402
 from agent.kg_context import empty_graph, merge_envelope  # noqa: E402
-from agent.tools import current_token, reset_run_cache  # noqa: E402
+from agent.tools import current_dataset, current_token, reset_run_cache  # noqa: E402
 from agent.tracing import init_tracing  # noqa: E402
 
-PERSONA_TOKENS = {
-    "mai": "tok-exec-mai",
-    "duc": "tok-rm-south-duc",
-    "lan": "tok-mkt-lan",
-    "binh": "tok-analyst-binh",
+# Persona ids are unique ACROSS tenants, so the frontend only sends a persona
+# and the dataset rides along here (tn --dataset is a global option; tokens
+# come from each tenant's users.yaml).
+PERSONAS = {
+    # Phong Vũ retail
+    "mai": {"token": "tok-exec-mai", "dataset": "retail"},
+    "duc": {"token": "tok-rm-south-duc", "dataset": "retail"},
+    "lan": {"token": "tok-mkt-lan", "dataset": "retail"},
+    "binh": {"token": "tok-analyst-binh", "dataset": "retail"},
+    # Shinhan Finance consumer lending
+    "sujin": {"token": "tok-exec-sujin", "dataset": "shinhan"},
+    "minh": {"token": "tok-risk-minh", "dataset": "shinhan"},
+    "thao": {"token": "tok-coll-thao", "dataset": "shinhan"},
+    "long": {"token": "tok-partner-long", "dataset": "shinhan"},
 }
 DEFAULT_PERSONA = "binh"
 
@@ -84,23 +93,24 @@ class GovernedStrandsAgent(StrandsAgent):
             or (input_data.state or {}).get("persona")
             or DEFAULT_PERSONA
         )
-        token = PERSONA_TOKENS.get(str(persona).lower())
+        persona_cfg = PERSONAS.get(str(persona).lower())
         thread_id = input_data.thread_id or "default"
 
         max_turns = int(os.getenv("MAX_TURNS_PER_SESSION", "20"))
         _turns_by_thread[thread_id] = _turns_by_thread.get(thread_id, 0) + 1
 
-        if token is None or _turns_by_thread[thread_id] > max_turns:
+        if persona_cfg is None or _turns_by_thread[thread_id] > max_turns:
             # Emit a normal run with a text explanation instead of crashing the UI.
             reason = (
-                f"Unknown persona {persona!r}." if token is None
+                f"Unknown persona {persona!r}." if persona_cfg is None
                 else "This demo session reached its turn limit - start a new chat."
             )
             async for event in self._refusal_run(input_data, reason):
                 yield event
             return
 
-        current_token.set(token)
+        current_token.set(persona_cfg["token"])
+        current_dataset.set(persona_cfg["dataset"])
         reset_run_cache()
 
         # CopilotKit's chat UI drops AG-UI Reasoning events, so mirror the
@@ -168,7 +178,7 @@ _kg_behavior = ToolBehavior(state_from_result=_kg_state)
 agui_agent = GovernedStrandsAgent(
     agent=build_agent(include_local_ask_user=False),
     name="true-north",
-    description="Governed BI analyst over the Phong Vu warehouse",
+    description="Governed BI analyst over the tenant's governed warehouse",
     config=StrandsAgentConfig(
         tool_behaviors={
             "resolve_term": _kg_behavior,

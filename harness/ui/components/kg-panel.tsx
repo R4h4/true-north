@@ -1,6 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
+import { useState } from "react";
 import { BrandMark } from "./brand-mark";
 
 // Card-node rendering of the agent's accumulated KG subgraph (shared state
@@ -46,6 +47,11 @@ function LockGlyph() {
 export function KgPanel({ graph }: { graph?: KgGraph }) {
   const nodes = graph?.nodes ?? [];
   const edges = graph?.edges ?? [];
+
+  // Hover focus: a node (id) or an edge (index). Hooks must run before the
+  // empty-graph early return.
+  const [hoverNode, setHoverNode] = useState<string | null>(null);
+  const [hoverEdge, setHoverEdge] = useState<number | null>(null);
 
   if (nodes.length === 0) {
     return (
@@ -96,6 +102,40 @@ export function KgPanel({ graph }: { graph?: KgGraph }) {
     return idx === Math.floor((fanSize.get(k)! - 1) / 2);
   });
 
+  // Hover highlight: the focused node plus every node one edge away stays lit;
+  // everything else dims. Hovering an edge lights both its endpoints.
+  const focusing = hoverNode !== null || hoverEdge !== null;
+  const lit = new Set<string>();
+  if (hoverNode !== null) {
+    lit.add(hoverNode);
+    edges.forEach((e) => {
+      if (e.source === hoverNode) lit.add(e.target);
+      if (e.target === hoverNode) lit.add(e.source);
+    });
+  }
+  if (hoverEdge !== null && edges[hoverEdge]) {
+    lit.add(edges[hoverEdge].source);
+    lit.add(edges[hoverEdge].target);
+  }
+  const edgeLit = (e: KgEdge, i: number) =>
+    hoverEdge === i || (hoverNode !== null && (e.source === hoverNode || e.target === hoverNode));
+
+  // Single tooltip: full (untruncated) node name, or an edge's relationship label.
+  const tip = (() => {
+    if (hoverNode !== null) {
+      const n = nodes.find((x) => x.id === hoverNode);
+      const p = pos.get(hoverNode);
+      if (n && p) return { x: p.x, y: p.y, kind: n.label, text: n.name };
+    }
+    if (hoverEdge !== null && edges[hoverEdge]) {
+      const e = edges[hoverEdge];
+      const a = pos.get(e.source);
+      const b = pos.get(e.target);
+      if (a && b) return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, kind: "relationship", text: e.label };
+    }
+    return null;
+  })();
+
   return (
     <>
       {/* min-height by band count: cramped panes scroll instead of piling
@@ -106,9 +146,31 @@ export function KgPanel({ graph }: { graph?: KgGraph }) {
             const a = pos.get(edge.source);
             const b = pos.get(edge.target);
             if (!a || !b) return null;
+            const on = edgeLit(edge, i);
             return (
               <g key={i} style={{ animation: "tn-edge .4s ease both" }}>
-                <line x1={`${a.x}%`} y1={`${a.y}%`} x2={`${b.x}%`} y2={`${b.y}%`} stroke="var(--border-strong)" strokeWidth={1.5} />
+                {/* wide transparent hit line: thin strokes are hard to hover */}
+                <line
+                  x1={`${a.x}%`}
+                  y1={`${a.y}%`}
+                  x2={`${b.x}%`}
+                  y2={`${b.y}%`}
+                  stroke="transparent"
+                  strokeWidth={14}
+                  style={{ cursor: "pointer" }}
+                  onMouseEnter={() => setHoverEdge(i)}
+                  onMouseLeave={() => setHoverEdge((cur) => (cur === i ? null : cur))}
+                />
+                <line
+                  x1={`${a.x}%`}
+                  y1={`${a.y}%`}
+                  x2={`${b.x}%`}
+                  y2={`${b.y}%`}
+                  stroke={on ? "var(--accent)" : "var(--border-strong)"}
+                  strokeWidth={on ? 2.4 : 1.5}
+                  opacity={focusing && !on ? 0.2 : 1}
+                  style={{ pointerEvents: "none", transition: "stroke 120ms ease, opacity 120ms ease" }}
+                />
                 {showLabel[i] ? (
                   <text
                     x={`${(a.x + b.x) / 2}%`}
@@ -119,11 +181,13 @@ export function KgPanel({ graph }: { graph?: KgGraph }) {
                     textAnchor="middle"
                     fontSize={9.5}
                     letterSpacing="0.05em"
-                    fill="var(--muted)"
+                    fill={on ? "var(--accent-dark)" : "var(--muted)"}
                     stroke="var(--surface-subtle)"
                     strokeWidth={3}
                     paintOrder="stroke"
                     fontFamily={MONO}
+                    opacity={focusing && !on ? 0.2 : 1}
+                    style={{ pointerEvents: "none" }}
                   >
                     {edge.label}
                   </text>
@@ -136,18 +200,33 @@ export function KgPanel({ graph }: { graph?: KgGraph }) {
           const p = pos.get(node.id);
           if (!p) return null;
           const ts = TYPE_STYLES[node.label] ?? FALLBACK_STYLE;
+          const dim = focusing && !lit.has(node.id);
           return (
             <div
               key={node.id}
               className="kg-node"
-              style={{ left: `${p.x}%`, top: `${p.y}%`, maxWidth: `calc(${p.slot}% - 10px)` }}
-              title={node.name}
+              style={{
+                left: `${p.x}%`,
+                top: `${p.y}%`,
+                maxWidth: `calc(${p.slot}% - 10px)`,
+                opacity: dim ? 0.28 : 1,
+                zIndex: lit.has(node.id) ? 2 : 1,
+                transition: "opacity 120ms ease",
+                cursor: "pointer",
+              }}
+              onMouseEnter={() => setHoverNode(node.id)}
+              onMouseLeave={() => setHoverNode((cur) => (cur === node.id ? null : cur))}
             >
               <div
                 className="kg-node-card"
                 style={{
                   background: node.locked ? "var(--red-tint)" : ts.bg,
-                  borderColor: node.locked ? "var(--red)" : ts.border,
+                  borderColor: hoverNode === node.id
+                    ? "var(--accent)"
+                    : node.locked ? "var(--red)" : ts.border,
+                  boxShadow: hoverNode === node.id
+                    ? "0 0 0 3px rgba(124, 92, 240, 0.18), var(--shadow-card)"
+                    : "var(--shadow-card)",
                   animation: node.new ? "tn-pulse 1.4s ease 2" : "none",
                 }}
               >
@@ -164,6 +243,12 @@ export function KgPanel({ graph }: { graph?: KgGraph }) {
             </div>
           );
         })}
+        {tip && (
+          <div className="kg-tip" style={{ left: `${tip.x}%`, top: `${tip.y}%` }}>
+            <span className="kg-tip-kind">{tip.kind}</span>
+            {tip.text}
+          </div>
+        )}
       </div>
       <div className="kg-legend">
         {LEGEND.map((item) => (

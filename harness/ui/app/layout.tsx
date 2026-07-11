@@ -15,7 +15,7 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "True North — Governed BI",
+  title: "True North | Trust answers for your business",
   description: "Ask business questions; every answer is governed by the tn contract",
 };
 
