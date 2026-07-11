@@ -59,8 +59,9 @@ export function KgPanel({ graph }: { graph?: KgGraph }) {
   // Percent-based positions: one horizontal band per label, nodes spread
   // evenly within their band. Small graphs (a governed turn touches ~6-12
   // entities) stay readable without a force layout. Bands wider than the pane
-  // can hold (4 cards) wrap onto extra rows instead of overlapping.
-  const MAX_PER_ROW = 4;
+  // can hold (3 cards) wrap onto extra rows, and each card is width-capped to
+  // its row slot so neighbors can never overlap.
+  const MAX_PER_ROW = 3;
   const bands = BAND_ORDER.filter((label) => nodes.some((n) => n.label === label));
   const extra = [...new Set(nodes.map((n) => n.label))].filter((l) => !bands.includes(l));
   const rows: KgNode[][] = [...bands, ...extra].flatMap((label) => {
@@ -69,12 +70,15 @@ export function KgPanel({ graph }: { graph?: KgGraph }) {
     for (let i = 0; i < group.length; i += MAX_PER_ROW) chunks.push(group.slice(i, i + MAX_PER_ROW));
     return chunks;
   });
-  const pos = new Map<string, { x: number; y: number }>();
+  // Centers at (i+0.5)/n use the full pane width; `slot` is the horizontal
+  // span each card may occupy before it would touch its neighbor.
+  const pos = new Map<string, { x: number; y: number; slot: number }>();
   rows.forEach((row, bi) => {
     row.forEach((node, i) => {
       pos.set(node.id, {
-        x: ((i + 1) / (row.length + 1)) * 100,
+        x: ((i + 0.5) / row.length) * 100,
         y: ((bi + 1) / (rows.length + 1)) * 100,
+        slot: 100 / row.length,
       });
     });
   });
@@ -130,7 +134,12 @@ export function KgPanel({ graph }: { graph?: KgGraph }) {
           if (!p) return null;
           const ts = TYPE_STYLES[node.label] ?? FALLBACK_STYLE;
           return (
-            <div key={node.id} className="kg-node" style={{ left: `${p.x}%`, top: `${p.y}%` }}>
+            <div
+              key={node.id}
+              className="kg-node"
+              style={{ left: `${p.x}%`, top: `${p.y}%`, maxWidth: `calc(${p.slot}% - 10px)` }}
+              title={node.name}
+            >
               <div
                 className="kg-node-card"
                 style={{

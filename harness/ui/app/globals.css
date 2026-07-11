@@ -410,6 +410,8 @@ body {
 
 .chat-pane .copilotKitInput textarea {
   font-size: 15px;
+  /* roomy three-line resting height; still auto-grows past it */
+  min-height: 72px;
 }
 
 /* Send button: muted glyph while the field is empty, filled accent circle
@@ -587,7 +589,9 @@ cpk-web-inspector {
   border: 1px solid;
   box-shadow: var(--shadow-card);
   white-space: nowrap;
-  max-width: 170px;
+  /* the .kg-node wrapper caps width at the row slot so cards never overlap */
+  max-width: min(170px, 100%);
+  overflow: hidden;
 }
 
 .kg-node-type {
@@ -600,6 +604,8 @@ cpk-web-inspector {
 .kg-node-name {
   overflow: hidden;
   text-overflow: ellipsis;
+  /* flex child: allow shrinking below content width so ellipsis engages */
+  min-width: 0;
 }
 
 .kg-empty {
