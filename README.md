@@ -1,8 +1,30 @@
+<p align="center">
+  <img src="docs/images/banner.png" alt="True North — Governed self-service BI: ask your business data anything, every answer governed by a semantic layer" width="100%">
+</p>
+
 # true-north
 
 Governed self-service BI, built as a hackathon project: business users ask questions in natural language; an agent answers from a governed semantic layer with permissions, provenance, and a knowledge graph — instead of guessing SQL against raw tables.
 
 The demo warehouse models **Phong Vũ** (phongvu.vn), a Vietnamese consumer-electronics retailer, as a synthetic star schema with deliberately planted traps a naive text-to-SQL agent falls into (see `source/data/TRAPS.md`).
+
+## Screenshots
+
+The workbench: a governed chat on the left, and a live knowledge-graph panel on the right that shows every entity an answer touched. The persona switcher (top right) changes who is asking; the data-source switcher changes which tenant you are in.
+
+<img src="docs/images/landing.png" alt="True North workbench — empty state with persona and data-source switchers and an empty knowledge-graph panel" width="100%">
+
+**A governed answer.** Ask for gross margin by category and the agent resolves the term through the semantic layer, returns a chart stamped *"Governed by tn contract"*, and states the metric definition, data freshness, and which permissions applied — with every metric, dimension, and table it read shown as typed nodes in the graph.
+
+<img src="docs/images/conversation.png" alt="A governed answer: gross margin by category bar chart, a written answer with metric definition and provenance, and a populated knowledge-graph panel" width="100%">
+
+**Governance in the open.** The same question from the Marketing persona is refused — gross margin reads a masked cost column their role cannot see — so the agent explains *why*, offers the metrics they **can** use, and renders the blocked metric as a locked node in the graph. Access is never guessed; it is resolved per persona.
+
+<img src="docs/images/governance-denial.png" alt="Governance refusal: the Marketing persona is denied gross margin because it uses a masked cost column, and the restricted metric appears as a locked red node" width="100%">
+
+**One agent, many tenants.** Switch the data source to a consumer-lending warehouse and the personas, metrics, suggestions, and policies switch with it — the same governed CLI contract fronts both.
+
+<img src="docs/images/tenant-lending.png" alt="Second tenant: a consumer-lending warehouse with lending personas and NPL / disbursement metrics" width="100%">
 
 ## Architecture
 
