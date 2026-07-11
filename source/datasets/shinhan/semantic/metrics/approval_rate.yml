@@ -21,6 +21,9 @@ compute:
       time_column: ts
       filters:
         - {column: decision, operator: "=", value: approved}
+      joins:
+        - {table: dim_product, left_on: product_key, right_on: product_key}
+        - {table: dim_channel, left_on: channel, right_on: channel_key}
     decided_count:
       table: fact_applications
       expr: app_id
@@ -28,4 +31,7 @@ compute:
       time_column: ts
       filters:
         - {column: decision, operator: in, value: [approved, rejected]}
+      joins:
+        - {table: dim_product, left_on: product_key, right_on: product_key}
+        - {table: dim_channel, left_on: channel, right_on: channel_key}
   expr: "approved_count / decided_count"

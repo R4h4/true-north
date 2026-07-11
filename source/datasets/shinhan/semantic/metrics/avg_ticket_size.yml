@@ -22,6 +22,8 @@ compute:
       joins:
         - {table: dim_customer, left_on: customer_id, right_on: customer_id}
         - {table: dim_partner, left_on: partner_id, right_on: partner_id}
+        - {table: dim_product, left_on: product_key, right_on: product_key}
+        - {table: dim_channel, left_on: channel, right_on: channel_key}
     loan_count:
       table: fact_disbursements
       expr: loan_id
@@ -30,4 +32,6 @@ compute:
       joins:
         - {table: dim_customer, left_on: customer_id, right_on: customer_id}
         - {table: dim_partner, left_on: partner_id, right_on: partner_id}
+        - {table: dim_product, left_on: product_key, right_on: product_key}
+        - {table: dim_channel, left_on: channel, right_on: channel_key}
   expr: "principal_sum / loan_count"
