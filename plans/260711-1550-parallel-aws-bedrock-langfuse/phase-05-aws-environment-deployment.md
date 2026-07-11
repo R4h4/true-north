@@ -39,8 +39,9 @@ EC2 t3.xlarge (ap-southeast-1, Ubuntu 22.04, Elastic IP,
   security group: 22 (team IPs only); nothing else inbound
   UI exposure: SSH tunnel during dev; cloudflared quick tunnel (outbound-only, free HTTPS
   URL) on demo day — certbot/Let's Encrypt on *.compute.amazonaws.com is banned by LE
-  policy, so nginx+certbot needs a real domain we don't want to manage. App itself gated
-  by DEMO_PASSPHRASE (phase 3).
+  policy, so nginx+certbot needs a real domain we don't want to manage. App is open
+  (no auth, Phong's decision) — quota guarded by MAX_TURNS_PER_SESSION (phase 3) and
+  the unlisted tunnel URL.
 ```
 
 - Bedrock note: GPT-5.5 serves from **us-east-1/us-east-2** via the bedrock-mantle

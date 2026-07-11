@@ -20,8 +20,10 @@ Chosen stack (research report
 - **Strands Agents SDK** (AWS OSS, 1.x) owns the agent loop: `@tool` functions,
   `stream_async` emitting reasoning/text/tool events, first-party Langfuse OTel export.
 - **Chainlit** owns the UI: native step tree for thoughts/tool calls,
-  `cl.AskUserMessage` for mid-run follow-up questions, `cl.Plotly` for charts,
-  password-auth for the passphrase gate.
+  `cl.AskUserMessage` for mid-run follow-up questions, `cl.Plotly` for charts, and a
+  **live KG-context sidebar** (`cl.ElementSidebar`) showing the subgraph the agent has
+  explored so far. **No auth** — open access by Phong's decision (2026-07-11): anyone
+  with the demo URL can try it.
 - Model: **GPT-5.5 via bedrock-mantle** (OpenAI-compatible endpoint), configured as
   Strands' OpenAI provider with a custom base_url.
 
@@ -34,8 +36,10 @@ Developed 100% against Karsten's replay stub (PR #4: `uv run tn`, fixtures in
   bootstrap → term resolve → variant disambiguation **by asking the user via
   `cl.AskUserMessage`** → metric detail → data query → envelope-driven narration);
   persona token on every CLI call; **every reasoning/tool step visible in the UI as a
-  Chainlit step**; Plotly chart rendering from query results; pin-to-dashboard;
-  md/xlsx/parquet exports.
+  Chainlit step**; **KG-context sidebar that grows as the agent explores** (each
+  `query_knowledge_graph` result adds its nodes/edges to a session subgraph rendered
+  beside the chat — the user watches context build up); Plotly chart rendering from
+  query results; pin-to-dashboard; md/xlsx/parquet exports.
 - Non-functional: every user turn = one Langfuse trace (via Strands OTel) with nested
   generation + tool spans, session + persona tagged; model/CLI/keys all env-configured;
   loop capped by Strands' max-iterations config with a graceful "couldn't answer" path.
@@ -56,6 +60,8 @@ Chainlit chat (@cl.on_message) ── Strands Agent.stream_async(question)   har
   │     tn kg query|metrics list|metrics describe|query --token $TOKEN ...
   │     v0.3 envelope (incl. error.code/details) returned as the tool result
   ├─ ask_user(question, options) tool → cl.AskUserMessage — the follow-up loop
+  ├─ every kg-tool envelope → kg_context: session subgraph accumulates nodes/edges,
+  │     re-rendered as a Plotly network in cl.ElementSidebar (the "context building up" view)
   └─ render_chart(plotly_spec) → validate via plotly.io.from_json, inject last
         result rows, cl.Plotly element · 📌 pin → persisted to harness/dashboard/
 ```
@@ -94,6 +100,17 @@ Chainlit chat (@cl.on_message) ── Strands Agent.stream_async(question)   har
   model can pause and ask (variant disambiguation, candidate selection) instead of
   guessing — this is the "loop until enough context" behavior, and it's a tool call, so
   it appears in the Langfuse trace like any other step.
+- **KG-context sidebar** (`harness/agent/kg_context.py`): a per-session dict of
+  `{nodes, edges}` keyed by node id. After every `query_knowledge_graph` /
+  `describe_metric` call, the harness parses the envelope rows (Concept / Metric /
+  Dimension / Table / Constraint nodes, VARIANT_OF / MEASURED_BY / HAS_DIMENSION /
+  COMPUTED_FROM / CONSTRAINS edges — the contract §4 shapes) and merges them in.
+  Rendered as a Plotly network figure (spring-ish static layout, node color by label,
+  **newly added nodes highlighted**, `_access.readable: false` nodes marked
+  locked — DoD-3's denied metric shows up visibly locked in the sidebar) via
+  `cl.ElementSidebar.set_elements`, title "What the agent knows so far". Pure Python +
+  Plotly, no new deps; parse defensively — unknown row shapes are skipped, never crash
+  the turn.
 - **`render_chart(title, plotly_spec)` tool** (switched from Vega-Lite → Plotly because
   Chainlit renders Plotly natively — see the 1718 research report; same
   validate-and-self-correct pattern): spec arrives WITHOUT data; the harness injects the
@@ -129,11 +146,12 @@ Chainlit chat (@cl.on_message) ── Strands Agent.stream_async(question)   har
   `harness/agent/system_prompt.py`, `harness/agent/charts.py` (Plotly validation + data
   injection), `harness/agent/exports.py` (md/xlsx/parquet)
 - Create: `harness/app.py` (Chainlit: on_message → stream_async → step mapping, ask_user
-  bridge, persona picker via chat profiles, passphrase auth callback),
+  bridge, persona picker via chat profiles, KG-sidebar refresh — no auth),
+  `harness/agent/kg_context.py` (session subgraph + Plotly network rendering),
   `harness/dashboard/` (pinned-chart JSON + minimal viewer), `harness/.env.example`
   (`MODEL_ID=openai.gpt-5.5`, `OPENAI_BASE_URL` (bedrock-mantle), `OPENAI_API_KEY`
   (Bedrock API key), `GOVERNED_CLI_CMD`, `LANGFUSE_PUBLIC_KEY/SECRET_KEY/BASE_URL`,
-  `DEMO_PASSPHRASE`)
+  `MAX_TURNS_PER_SESSION`)
 - Modify: `harness/pyproject.toml` (add `strands-agents[otel]`, chainlit, plotly,
   pandas, openpyxl, pyarrow; pin versions)
 
@@ -151,11 +169,14 @@ Chainlit chat (@cl.on_message) ── Strands Agent.stream_async(question)   har
    USING-TN.md loop + verbatim-Cypher rule + ask-don't-guess rule + narration rules.
 4. `app.py`: Chainlit chat — persona picker (Mai/executive, Đức/regional-manager-South,
    Lan/marketing-ops, Bình/analyst) via chat profiles, `stream_async` → `cl.Step`
-   mapping (reasoning + tool steps visible), `ask_user` → `cl.AskUserMessage` bridge,
-   `DEMO_PASSPHRASE` auth callback; new chat = new Langfuse session id.
-5. `charts.py` + `exports.py`: Plotly validation/injection + `cl.Plotly` rendering;
+   mapping (reasoning + tool steps visible), `ask_user` → `cl.AskUserMessage` bridge;
+   no auth (open access); `MAX_TURNS_PER_SESSION` guard against quota burn; new chat =
+   new Langfuse session id.
+5. `kg_context.py`: envelope → subgraph merge + Plotly network; wire the sidebar
+   refresh after each KG/describe tool call; verify on the DoD-1 exploration rounds.
+6. `charts.py` + `exports.py`: Plotly validation/injection + `cl.Plotly` rendering;
    pin persistence; md/xlsx/parquet writers attached via `cl.File`.
-6. Run the Definition-of-Done script below end-to-end; fix until green.
+7. Run the Definition-of-Done script below end-to-end; fix until green.
 
 ## Definition of Done — the four demo conversations (all on the stub)
 
@@ -171,7 +192,9 @@ canonical KG query → parent Concept with 2 variants (repeat-purchase vs loyalt
 metric detail (dims/caveats/tables) → `tn query --metric repeat_purchase_rate_90d
 --group-by channel` → answer shows a ratio formatted as %, names the caveat(s), renders a
 bar chart via `render_chart`. ✅ when: agent asked instead of guessing; chart rendered
-from real result rows; caveat named in prose; KG-exploration steps visible in the UI.
+from real result rows; caveat named in prose; KG-exploration steps visible in the UI;
+**the sidebar visibly grows across the turn** (Concept → two variants → chosen metric →
+its dimensions/tables appear in sequence).
 
 **DoD-2 · Row-level security, side by side (Mai vs Đức).**
 Same question, two chats: "Net revenue by channel this year?" as Mai (national), then as
@@ -203,6 +226,8 @@ opens in Excel/Numbers, and a .parquet that `pandas.read_parquet` round-trips.
 - [ ] DoD-1…DoD-4 pass twice consecutively on the stub, each as a natural chat.
 - [ ] Agentic visibility: reasoning + every tool call rendered as Chainlit steps
   (chain-of-thought mode `tool_call` at minimum; `full` if reasoning summaries stream).
+- [ ] KG-context sidebar: grows during DoD-1's exploration rounds; DoD-3 shows Lan's
+  denied metric as a locked node; resets on new chat.
 - [ ] Langfuse trace tree per turn (via Strands OTel): trace → agent span →
   N×(generation | tool span), session + persona tagged, token usage populated.
 - [ ] Chart pipeline: invalid spec from the model self-corrects via validation-error
@@ -226,6 +251,15 @@ opens in Excel/Numbers, and a .parquet that `pandas.read_parquet` round-trips.
 - **Strands↔Chainlit event mapping friction** (reasoning events shape varies by
   provider) → map defensively: unknown event types collapse into the current step's
   output rather than crashing the stream.
+- **Open access burns Bedrock quota / lets strangers hammer the demo** (accepted
+  trade-off — Phong wants everyone to try it) → mitigations that don't gate access:
+  unlisted cloudflared URL, `MAX_TURNS_PER_SESSION` cap, Langfuse gives per-session
+  usage visibility; if abuse shows up on demo day, re-adding Chainlit password auth is
+  a 10-line revert.
+- **KG envelope rows don't parse into a clean subgraph** (stub fixtures may return
+  tabular projections, not node objects) → parse defensively per canonical-query shape;
+  worst case the sidebar shows names + relationship labels from the known query
+  templates rather than a full graph — still tells the "context builds up" story.
 - **Model over-queries the warehouse without KG context** → tighten system prompt; if
   insufficient, force first tool call to `query_knowledge_graph` via Strands hooks.
 - **Version drift** (Strands 1.x moves fast; Langfuse v4) → pin versions in pyproject.

@@ -43,7 +43,7 @@ observability.
 | Tracing | **Langfuse Cloud free tier** (50k events/mo), fed by **Strands OTel** (`strands-agents[otel]` + `StrandsTelemetry` → `/api/public/otel`) | 15-min setup vs ~45-min 6-container self-host stack. Strands↔Langfuse integration is documented first-party on both sides — replaces the earlier `langfuse.openai` drop-in + manual `@observe` plan. Cost config for `openai.gpt-5.5` still manual in the dashboard. Fallback: self-host on the demo EC2 if hackathon rules demand everything on AWS. |
 | Neo4j | `neo4j:5-community` in Docker (local dev + on demo EC2) | AuraDB Free auto-pauses/deletes and caps size; Docker is identical Cypher, zero surprise. |
 | Deployment | Single EC2 **t3.xlarge** (ap-southeast-1) + docker-compose + IAM instance role | Fits Neo4j + services (+ Langfuse if self-hosted); ~USD 5–7/day, ~50–65 for the week. ECS/App Runner rejected (App Runner in maintenance mode since Apr 2026). |
-| Chat UI | **Chainlit** (native step tree for thoughts/tool calls, `cl.AskUserMessage` for mid-run follow-up questions, `cl.Plotly` charts, password-auth passphrase gate), SSH tunnel during dev, **cloudflared quick tunnel** for demo day | Chainlit renders the agentic loop (reasoning, tool choice, human-in-the-loop) as built-in primitives — Streamlit's rerun model fights mid-run interaction. Chart format switches Vega-Lite → Plotly JSON accordingly. Let's Encrypt refuses `*.compute.amazonaws.com` hostnames, so certbot-on-EC2 is a dead end without a domain; a quick tunnel gives a free HTTPS URL. The passphrase gate stops strangers from playing CEO (`tok-exec-mai`) and burning Bedrock quota. |
+| Chat UI | **Chainlit** (native step tree for thoughts/tool calls, `cl.AskUserMessage` for mid-run follow-up questions, `cl.Plotly` charts, **live KG-context sidebar** via `cl.ElementSidebar`), SSH tunnel during dev, **cloudflared quick tunnel** for demo day, **no auth** | Chainlit renders the agentic loop (reasoning, tool choice, human-in-the-loop) as built-in primitives — Streamlit's rerun model fights mid-run interaction. Chart format switches Vega-Lite → Plotly JSON accordingly. Let's Encrypt refuses `*.compute.amazonaws.com` hostnames, so certbot-on-EC2 is a dead end without a domain; a quick tunnel gives a free HTTPS URL. Open access is Phong's call (2026-07-11) — quota guarded by a per-session turn cap + unlisted URL instead of a passphrase. |
 
 ## Parallel-Work Rules (the actual answer to "don't mess up each other")
 
@@ -141,3 +141,9 @@ Phase 5A (Phong, day 0-1, parallel)
    Strands OTel → Langfuse, charts switch Vega-Lite → Plotly (Chainlit-native), Streamlit
    replaced. Day-0 verification: bedrock-mantle API surface (Chat Completions vs
    Responses) for `openai.gpt-5.5` against Strands' OpenAI provider.
+9. **Open demo + live KG-context sidebar** (Phong, 2026-07-11) — no passphrase, anyone
+   with the URL can try it (trade-off accepted: quota burn risk, mitigated by
+   `MAX_TURNS_PER_SESSION` + unlisted cloudflared URL; password auth is a 10-line
+   revert if abused). The Chainlit sidebar renders the session's accumulated KG
+   subgraph after every KG tool call, so users see *why* the agent queries and how
+   context builds up — locked nodes show governance visually (DoD-3).
