@@ -1,6 +1,0 @@
-key: channel
-name: Sales channel
-description: Transaction channel as recorded at point of sale. Business "offline" maps to in_store (and sometimes b2b); "online" maps to web + app.
-type: categorical
-source: fact_sales_lines.channel
-canonical_values: [in_store, web, app, b2b]

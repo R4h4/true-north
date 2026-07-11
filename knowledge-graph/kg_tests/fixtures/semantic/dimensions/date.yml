@@ -1,6 +1,0 @@
-key: date
-name: Date
-description: Business date of the underlying event. Virtual — each metric binds it to a concrete time column per measure; --grain/--start/--end apply here.
-type: time
-source: null
-grains: [day, week, month, quarter, year]

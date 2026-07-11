@@ -1,6 +1,0 @@
-key: region
-name: Region
-description: Sales region the store belongs to (North / Central / South).
-type: geo
-source: dim_store.region
-canonical_values: [North, Central, South]

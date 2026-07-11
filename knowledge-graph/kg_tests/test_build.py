@@ -21,6 +21,30 @@ def test_invariants_hold(graph, semantic):
     assert_invariants(graph, semantic)  # no raise
 
 
+def test_live_graph_node_and_edge_counts(graph):
+    # These counts are built from the LIVE source/semantic/ (no frozen snapshot).
+    # When the authored semantic layer changes, these numbers are EXPECTED to move —
+    # that is the point of testing against live files. If this assertion fails after a
+    # deliberate semantic-layer edit, recount and update it; it is a change detector,
+    # not a contract. As of this commit: 54 nodes / 187 edges.
+    assert len(graph.nodes) == 54
+    assert len(graph.edges) == 187
+
+
+def test_live_graph_node_counts_by_label(graph):
+    from collections import Counter
+
+    counts = Counter(n.label for n in graph.nodes)
+    assert counts == {
+        "Table": 8,
+        "Metric": 10,
+        "Dimension": 11,
+        "Concept": 13,
+        "Constraint": 8,
+        "Role": 4,
+    }
+
+
 def test_metric_nodes_match_semantic_layer(graph, semantic):
     # Invariant 3 / success criterion 4: Metric node keys == A's metric keys.
     assert _labels(graph, "Metric") == set(semantic.metrics.keys())
