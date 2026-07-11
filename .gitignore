@@ -4,5 +4,5 @@ __pycache__/
 .DS_Store
 
 # Generated data: keep the directory, ignore its parquet contents
-data/parquet/*
-!data/parquet/.gitkeep
+**/data/parquet/*
+!**/data/parquet/.gitkeep

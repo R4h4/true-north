@@ -1,6 +1,11 @@
 version = 1
 requires-python = ">=3.12"
 
+[manifest]
+members = [
+    "true-north-source",
+]
+
 [[package]]
 name = "duckdb"
 version = "1.5.4"
@@ -130,9 +135,9 @@ wheels = [
 ]
 
 [[package]]
-name = "true-north"
+name = "true-north-source"
 version = "0.1.0"
-source = { editable = "." }
+source = { editable = "source" }
 dependencies = [
     { name = "duckdb" },
     { name = "faker" },
