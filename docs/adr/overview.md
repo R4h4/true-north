@@ -20,3 +20,4 @@ The immutable log of *why* true-north is built the way it is.
 - [0007](records/0007-users-yaml-single-policy-source.md) — users.yaml is the single policy source; denials are derived
 - [0008](records/0008-two-owner-agent-dev-process.md) — Two-owner development with frontier agents; thin process, no heavy harness
 - [0009](records/0009-single-semantic-loader-seam.md) — One typed semantic loader in source; table semantics as YAML; KG tests on live; access single-sourced in governance.policy
+- [0010](records/0010-postgres-policy-and-audit.md) — Runtime policy store + query audit in Postgres; authored YAML compiles into the store, same pattern as the graph

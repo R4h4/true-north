@@ -13,21 +13,24 @@ hooks:
 	echo "installed pre-commit hook -> $$hookdir/pre-commit"
 
 # One-command bring-up of the real services + a smoke over the governed CLI.
-# From a clean checkout: starts Neo4j and waits for it to be healthy, generates
-# the warehouse (small, seed 42), compiles the graph, then runs three real `tn`
-# calls (kg schema, a term-resolution kg query, a governed warehouse query) and
-# prints their envelopes.
+# From a clean checkout: starts Neo4j AND Postgres and waits for both to be
+# healthy, generates the warehouse (small, seed 42), compiles the graph, loads
+# the runtime policy store (ADR 0010), then runs three real `tn` calls (kg
+# schema, a term-resolution kg query, a governed warehouse query) and prints
+# their envelopes. Each call also writes one audit_log row to Postgres.
 demo:
 	@echo ">> uv sync"
 	uv sync
-	@echo ">> starting Neo4j (docker compose up -d --wait)"
-	@# On a clean checkout this brings up and waits for the compose-owned Neo4j.
+	@echo ">> starting Neo4j + Postgres (docker compose up -d --wait)"
+	@# On a clean checkout this brings up and waits for the compose-owned services.
 	@# If a healthy true-north-neo4j is already serving bolt (e.g. another checkout
-	@# started it), reuse it instead of failing on the fixed container_name.
+	@# started it), reuse it instead of failing on the fixed container_name — but
+	@# always ensure Postgres is up too.
 	@if docker compose up -d --wait 2>/dev/null; then \
-		echo "   compose Neo4j healthy"; \
+		echo "   compose services healthy"; \
 	elif docker exec true-north-neo4j cypher-shell -u neo4j -p "$${NEO4J_PASSWORD:-true-north-dev}" 'RETURN 1' >/dev/null 2>&1; then \
-		echo "   reusing already-running true-north-neo4j"; \
+		echo "   reusing already-running true-north-neo4j; ensuring Postgres is up"; \
+		docker compose up -d postgres --wait; \
 	else \
 		echo "   ERROR: could not start or reach Neo4j" >&2; exit 1; \
 	fi
@@ -35,6 +38,8 @@ demo:
 	cd source && uv run python -m generator.generate --scale small --seed 42
 	@echo ">> compiling knowledge graph"
 	uv run python -m knowledge_graph.compile
+	@echo ">> loading runtime policy store (users.yaml -> Postgres)"
+	uv run python -m governance.pg
 	@echo ""
 	@echo "==== SMOKE 1/3: tn kg schema (tokenless) ===="
 	uv run tn kg schema
