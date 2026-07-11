@@ -3,7 +3,12 @@ name = "true-north-governance"
 version = "0.1.0"
 description = "Data-governance layer: RLS, column masking, PII tokenization, table access; the governed CLI"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "typer>=0.12",
+]
+
+[project.scripts]
+tn = "governance.cli:app"
 
 [build-system]
 requires = ["hatchling"]
