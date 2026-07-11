@@ -1,0 +1,4 @@
+key: dim_customer
+description: Loyalty customers; walk-ins are not present.
+grain: customer
+freshness_note: refreshed daily

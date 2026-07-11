@@ -1,0 +1,4 @@
+key: fact_returns
+description: Refunds; refund_amount reduces net revenue. Separate table from sales.
+grain: return line
+freshness_note: refreshed daily

@@ -1,0 +1,4 @@
+key: fact_traffic
+description: Daily store footfall and completed-basket counts.
+grain: store × day
+freshness_note: refreshed daily

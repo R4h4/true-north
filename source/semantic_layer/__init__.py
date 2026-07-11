@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import importlib.util
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 
@@ -95,15 +95,27 @@ class Dimension:
 
 
 @dataclass(frozen=True)
+class Table:
+    key: str
+    description: str
+    grain: str
+    freshness_note: str
+
+
+@dataclass(frozen=True)
 class SemanticLayer:
     metrics: dict[str, Metric]
     dimensions: dict[str, Dimension]
+    tables: dict[str, Table] = field(default_factory=dict)
 
     def metric(self, key: str) -> Metric | None:
         return self.metrics.get(key)
 
     def dimension(self, key: str) -> Dimension | None:
         return self.dimensions.get(key)
+
+    def table(self, key: str) -> Table | None:
+        return self.tables.get(key)
 
 
 def _load_dir(directory: Path) -> dict[str, dict]:
@@ -162,13 +174,25 @@ def _dimension(stem: str, raw: dict) -> Dimension:
     )
 
 
+def _table(stem: str, raw: dict) -> Table:
+    return Table(
+        key=raw["key"],
+        description=raw["description"],
+        grain=raw["grain"],
+        freshness_note=raw["freshness_note"],
+    )
+
+
 @lru_cache(maxsize=None)
 def load_semantic(semantic_dir: Path = SEMANTIC_DIR) -> SemanticLayer:
-    metrics_raw = _load_dir(Path(semantic_dir) / "metrics")
-    dims_raw = _load_dir(Path(semantic_dir) / "dimensions")
+    semantic_dir = Path(semantic_dir)
+    metrics_raw = _load_dir(semantic_dir / "metrics")
+    dims_raw = _load_dir(semantic_dir / "dimensions")
+    tables_raw = _load_dir(semantic_dir / "tables")
     metrics = {stem: _metric(stem, raw) for stem, raw in metrics_raw.items()}
     dimensions = {stem: _dimension(stem, raw) for stem, raw in dims_raw.items()}
-    return SemanticLayer(metrics=metrics, dimensions=dimensions)
+    tables = {stem: _table(stem, raw) for stem, raw in tables_raw.items()}
+    return SemanticLayer(metrics=metrics, dimensions=dimensions, tables=tables)
 
 
 def schema_module():

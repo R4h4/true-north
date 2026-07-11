@@ -1,0 +1,4 @@
+key: dim_store
+description: Stores; opened_date/closed_date drive same-store comparability.
+grain: store
+freshness_note: slowly changing dimension

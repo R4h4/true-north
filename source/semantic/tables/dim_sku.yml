@@ -1,0 +1,4 @@
+key: dim_sku
+description: Products; unit_cost/list_price are list values, not transacted.
+grain: sku
+freshness_note: slowly changing dimension

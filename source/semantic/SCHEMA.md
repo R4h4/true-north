@@ -8,6 +8,7 @@ Layout:
 source/semantic/
   metrics/<key>.yml       one file per governed metric, filename = key
   dimensions/<key>.yml    one file per governed dimension, filename = key
+  tables/<name>.yml       one file per physical table, filename = table name
 ```
 
 ## Metric file
@@ -71,3 +72,20 @@ grains: [day, week, month, quarter, year]     # required iff type: time
 ```
 
 Rules: `key` unique, equals filename stem; `source` resolves against `schema.py` (nullable for time); `canonical_values` exactly matches the corresponding vocabulary tuple in `schema.py` where one exists (CHANNELS, REGION values, CATEGORIES keys, …).
+
+## Table file
+
+```yaml
+key: fact_sales_lines             # == filename; a physical table in schema.py TABLES
+description: One row per basket line; net_amount is booked (gross of returns).
+grain: sales line                 # node-facing grain phrase
+freshness_note: refreshed daily   # staleness/refresh caveat (carries the dataset traps)
+```
+
+These supply the Table node's `description`/`grain`/`freshness_note` (CONTRACT §4.1) — `schema.py` owns columns but not table-level grain/freshness. The shared loader exposes them as `SemanticLayer.tables`; the KG compiler reads them via the loader (no hardcoded map).
+
+Rules (enforced by the semantic-layer validator):
+
+- `key` unique, equals filename stem, and is a table in `source/generator/schema.py` `TABLES`.
+- Required: `key, description, grain, freshness_note` (all non-empty).
+- Every table referenced by any metric measure has a `tables/<name>.yml` entry.

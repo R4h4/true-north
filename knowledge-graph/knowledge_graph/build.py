@@ -20,8 +20,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from knowledge_graph.table_semantics import TABLE_SEMANTICS
-
 
 @dataclass
 class Node:
@@ -77,13 +75,12 @@ def _dimension_props(d) -> dict:
     }
 
 
-def _table_props(table_key: str) -> dict:
-    sem = TABLE_SEMANTICS[table_key]
+def _table_props(table) -> dict:
     return {
-        "key": table_key,
-        "description": sem["description"],
-        "grain": sem["grain"],
-        "freshness_note": sem["freshness_note"],
+        "key": table.key,
+        "description": table.description,
+        "grain": table.grain,
+        "freshness_note": table.freshness_note,
     }
 
 
@@ -104,8 +101,8 @@ def _role_props(role_key: str, role: dict) -> dict:
 def build_graph(vocabulary: dict, semantic, policy: dict, schema, access_index) -> Graph:
     """Assemble the full node/edge list. Deterministic: sorted iteration throughout.
 
-    `semantic` is the shared typed SemanticLayer (ADR 0009); `.metrics`/`.dimensions`
-    are dicts of typed Metric/Dimension objects.
+    `semantic` is the shared typed SemanticLayer (ADR 0009); `.metrics`/`.dimensions`/
+    `.tables` are dicts of typed Metric/Dimension/Table objects.
     """
     g = Graph()
     concepts = vocabulary["concepts"]
@@ -117,8 +114,12 @@ def build_graph(vocabulary: dict, semantic, policy: dict, schema, access_index) 
     # Only tables actually reachable (a COMPUTED_FROM target, a dimension source, or
     # a constraint target) become Table nodes — but the graph invariants and CAN_READ
     # want every physical table. Emit all physical tables (they exist in the warehouse).
+    # Table semantics (grain/freshness/description) come from the authored tables/*.yml
+    # via the shared loader; the validator guarantees every physical table has an entry,
+    # and this lookup is the belt (KeyError if a table_semantics entry is missing).
+    table_semantics = semantic.tables
     for table_key in sorted(all_tables):
-        g.nodes.append(Node("Table", table_key, _table_props(table_key)))
+        g.nodes.append(Node("Table", table_key, _table_props(table_semantics[table_key])))
 
     for key in sorted(metrics):
         g.nodes.append(Node("Metric", key, _metric_props(metrics[key])))

@@ -169,9 +169,31 @@ USERS_BASE = {
 }
 
 
-def write_semantic(tmp: Path, metrics: dict[str, dict], dimensions: dict[str, dict]) -> Path:
+TABLE_SALES = {
+    "key": "fact_sales_lines",
+    "description": "One row per basket line; net_amount is booked (gross of returns).",
+    "grain": "sales line",
+    "freshness_note": "refreshed daily",
+}
+TABLE_RETURNS = {
+    "key": "fact_returns",
+    "description": "Refunds; refund_amount reduces net revenue.",
+    "grain": "return line",
+    "freshness_note": "refreshed daily",
+}
+
+
+def write_semantic(
+    tmp: Path,
+    metrics: dict[str, dict],
+    dimensions: dict[str, dict],
+    tables: dict[str, dict] | None = None,
+) -> Path:
     root = tmp / "semantic"
-    for sub, items in (("metrics", metrics), ("dimensions", dimensions)):
+    groups = [("metrics", metrics), ("dimensions", dimensions)]
+    if tables is not None:
+        groups.append(("tables", tables))
+    for sub, items in groups:
         (root / sub).mkdir(parents=True, exist_ok=True)
         for name, doc in items.items():
             (root / sub / f"{name}.yml").write_text(yaml.safe_dump(doc, sort_keys=False, allow_unicode=True))
@@ -193,14 +215,20 @@ def write_users(tmp: Path, doc: dict) -> Path:
     return p
 
 
-def base_semantic(tmp: Path, metric_mut=None, dim_mut=None, metric_name="net_revenue") -> Path:
+def base_semantic(tmp: Path, metric_mut=None, dim_mut=None, table_mut=None, metric_name="net_revenue") -> Path:
     metric = copy.deepcopy(METRIC_NET_REVENUE)
     if metric_mut:
         metric_mut(metric)
     dims = {"channel": copy.deepcopy(DIM_CHANNEL), "date": copy.deepcopy(DIM_DATE)}
     if dim_mut:
         dim_mut(dims)
-    return write_semantic(tmp, {metric_name: metric}, dims)
+    tables = {
+        "fact_sales_lines": copy.deepcopy(TABLE_SALES),
+        "fact_returns": copy.deepcopy(TABLE_RETURNS),
+    }
+    if table_mut:
+        table_mut(tables)
+    return write_semantic(tmp, {metric_name: metric}, dims, tables)
 
 
 BASE_KEYS = {"net_revenue"}
@@ -292,6 +320,36 @@ class TestSemanticValidator:
         root = base_semantic(tmp_path)
         errors = validate_semantic(root, SCHEMA_PY, required_metric_keys={"net_revenue", "gmv_gross"})
         assert any("gmv_gross" in e for e in errors)
+
+    def test_table_key_must_resolve_to_schema(self, tmp_path):
+        def mut(tables):
+            tables["fact_bogus"] = {
+                "key": "fact_bogus",
+                "description": "x",
+                "grain": "y",
+                "freshness_note": "z",
+            }
+        errors = validate_semantic(base_semantic(tmp_path, table_mut=mut), SCHEMA_PY, required_metric_keys=BASE_KEYS)
+        assert any("fact_bogus" in e for e in errors)
+
+    def test_table_key_must_match_filename(self, tmp_path):
+        def mut(tables):
+            tables["fact_sales_lines"]["key"] = "wrong_key"
+        errors = validate_semantic(base_semantic(tmp_path, table_mut=mut), SCHEMA_PY, required_metric_keys=BASE_KEYS)
+        assert any("wrong_key" in e for e in errors)
+
+    def test_table_missing_required_field(self, tmp_path):
+        def mut(tables):
+            tables["fact_sales_lines"].pop("grain")
+        errors = validate_semantic(base_semantic(tmp_path, table_mut=mut), SCHEMA_PY, required_metric_keys=BASE_KEYS)
+        assert any("grain" in e and "fact_sales_lines" in e for e in errors)
+
+    def test_measure_table_must_have_tables_entry(self, tmp_path):
+        # net_revenue's returns_refund measure reads fact_returns; drop its tables entry.
+        def mut(tables):
+            del tables["fact_returns"]
+        errors = validate_semantic(base_semantic(tmp_path, table_mut=mut), SCHEMA_PY, required_metric_keys=BASE_KEYS)
+        assert any("fact_returns" in e for e in errors)
 
 
 # ---------------------------------------------------------------------------

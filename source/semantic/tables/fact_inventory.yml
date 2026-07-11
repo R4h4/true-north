@@ -1,0 +1,4 @@
+key: fact_inventory
+description: Weekly on-hand snapshot per store×sku; never sum on_hand across weeks.
+grain: store × sku × week (snapshot)
+freshness_note: weekly snapshot; latest lags ~1 week behind sales
