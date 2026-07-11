@@ -55,3 +55,21 @@ the graph, reinforcing the "authored YAML compiles into build artifacts" story. 
 smoke queries — acceptable, since compose bring-up is already required (ADR 0004/0005).
 The CLI now has a Postgres dependency for every policy-bearing command; fail-open auditing
 plus the INTERNAL-envelope path keep a store outage from corrupting observable behavior.
+
+## Amendment (2026-07-11): Alembic owns the DDL
+
+The schema is now managed by Alembic (migrations under `governance/migrations/`), not by
+in-code `CREATE TABLE IF NOT EXISTS`. Migrations are the single DDL owner — the round-1
+`bootstrap_schema` is removed. `python -m governance.pg` is unchanged as the deploy
+entrypoint and to callers: it now runs `alembic upgrade head` programmatically (via
+`alembic.command.upgrade`) before hydrating. Migration 0001 keeps `IF NOT EXISTS`
+semantics so `upgrade head` succeeds on both a fresh database and a round-1 database that
+already had the tables. Alembic is a **deploy-time-only** dependency: it (and the
+SQLAlchemy it pulls in) is imported inside the loader path, never at `governance.pg`
+module scope, so the runtime `tn` CLI never loads SQLAlchemy and per-invocation latency is
+unchanged. env.py resolves the DSN through `governance.pg.resolve_dsn()` (honors
+`TN_PG_DSN`) and pins the psycopg 3 driver (`postgresql+psycopg://`).
+
+An ORM (SQLModel/SQLAlchemy models) was deliberately **not** adopted: the runtime CLI
+stays psycopg-only. Revisit only when an API layer exists that would benefit from an ORM
+(Karsten's call).
