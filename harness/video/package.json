@@ -1,0 +1,24 @@
+{
+  "name": "true-north-hero-video",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Remotion hero demo video for the True North governed-BI workbench",
+  "scripts": {
+    "studio": "remotion studio",
+    "render": "remotion render HeroVideo out/truenorth-hero.mp4 --codec h264",
+    "still": "remotion still HeroVideo",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@remotion/google-fonts": "4.0.488",
+    "@remotion/transitions": "4.0.488",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "remotion": "4.0.488"
+  },
+  "devDependencies": {
+    "@remotion/cli": "4.0.488",
+    "@types/react": "19.0.0",
+    "typescript": "5.7.3"
+  }
+}
