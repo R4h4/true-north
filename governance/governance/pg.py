@@ -212,23 +212,31 @@ def load_policy_to_db(
 # --- runtime: Postgres -> Policy --------------------------------------------
 
 
-def _warn_if_stale(stored_yaml_sha256: str | None) -> None:
+def _warn_if_stale(
+    stored_yaml_sha256: str | None,
+    authored_yaml: Path,
+    dataset_key: str = "retail",
+) -> None:
     """Warn ONCE on stderr if the authored users.yaml has changed since the last
-    load. Advisory only: never raises, never touches stdout or the exit code, and
+    load. Compares against THIS dataset's authored file (retail's users.yaml is
+    not the shinhan bundle's — comparing across datasets would misfire on every
+    call). Advisory only: never raises, never touches stdout or the exit code, and
     stays silent when there is nothing to compare (no stored hash, or no authored
     file on disk — the deployed-runtime case where the store IS the policy)."""
     try:
         if not stored_yaml_sha256:
             return
-        yaml_path = authored_users_yaml()
-        if not yaml_path.exists():
+        if not authored_yaml.exists():
             return
-        current = hashlib.sha256(yaml_path.read_bytes()).hexdigest()
+        current = hashlib.sha256(authored_yaml.read_bytes()).hexdigest()
         if current == stored_yaml_sha256:
             return
+        remedy = "uv run python -m governance.pg"
+        if dataset_key != "retail":
+            remedy += f" --dataset {dataset_key}"
         print(
             "tn: warning: runtime policy store is stale — authored users.yaml has "
-            "changed since the last load; run: uv run python -m governance.pg",
+            f"changed since the last load; run: {remedy}",
             file=sys.stderr,
         )
     except Exception:  # noqa: BLE001 — staleness detection is advisory, never a gate
@@ -286,7 +294,11 @@ def load_policy_from_db(dsn: str | None = None, semantic=None, dataset: str | No
         tokenization = cfg_rows.get("tokenization") or {}
         stored_yaml_sha256 = cfg_rows.get(_YAML_HASH_KEY)
 
-    _warn_if_stale(stored_yaml_sha256)
+    # Compare against THIS dataset's authored file: retail honors TN_USERS_YAML
+    # (deployed-runtime override); a non-default dataset uses its own bundle's
+    # users.yaml so the staleness check doesn't misfire against retail's.
+    authored = authored_users_yaml() if ds.key == "retail" else ds.users_yaml
+    _warn_if_stale(stored_yaml_sha256, authored, ds.key)
 
     return Policy(
         personas=personas,
