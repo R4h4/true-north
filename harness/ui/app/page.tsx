@@ -1,6 +1,11 @@
 "use client";
 
-import { CopilotKit, useCoAgent, useCopilotAction } from "@copilotkit/react-core";
+import {
+  CopilotKit,
+  useCoAgent,
+  useCopilotAction,
+  useCopilotChatSuggestions,
+} from "@copilotkit/react-core";
 import { CopilotChat } from "@copilotkit/react-ui";
 import "@copilotkit/react-ui/styles.css";
 import { useEffect, useRef, useState } from "react";
@@ -31,6 +36,32 @@ const PERSONAS = [
   { id: "lan", label: "Lan · Marketing" },
   { id: "binh", label: "Bình · Analyst" },
 ];
+
+// Conversation starters per persona - each exercises a governed path that
+// demos well for that role (KPI, trend, row filter, denial, ambiguity...).
+const SUGGESTIONS: Record<string, string[]> = {
+  mai: [
+    "What is our total net revenue?",
+    "Show me the monthly net revenue trend for 2025",
+    "How does net revenue split by region?",
+  ],
+  duc: [
+    "How is net revenue doing in my region?",
+    "Net revenue by channel, please",
+    "Show me the monthly net revenue trend for 2025",
+  ],
+  lan: [
+    "How is our customer retention doing by channel?",
+    "What is our gross margin by category?",
+    "Which metrics can I access?",
+  ],
+  binh: [
+    "How is our customer retention doing by channel?",
+    "What is our gross margin by category?",
+    "What is the average basket value by channel?",
+  ],
+};
+
 
 // Human-readable labels for the governed tools; the step timeline renders
 // only tools listed here (render_chart / ask_user have their own renderers).
@@ -109,9 +140,19 @@ function ThinkingBox({ text }: { text: string }) {
   );
 }
 
-function Workbench() {
+function Workbench({ persona }: { persona: string }) {
   // Shared state streamed by the backend (STATE_SNAPSHOT events).
   const { state } = useCoAgent<{ kg_context?: KgGraph; thinking?: string }>({ name: "true-north" });
+
+  // Conversation starters, rendered natively by CopilotChat until the first
+  // user message; tailored per persona.
+  useCopilotChatSuggestions(
+    {
+      suggestions: (SUGGESTIONS[persona] ?? []).map((q) => ({ title: q, message: q })),
+      available: "before-first-message",
+    },
+    [persona],
+  );
 
   // ask_user: the agent's human-in-the-loop tool. Rendering happens here;
   // the adapter proxies it to the model as a frontend tool per thread.
@@ -166,8 +207,7 @@ function Workbench() {
         <CopilotChat
           labels={{
             title: "True North",
-            initial:
-              "Ask a business question — e.g. “How is our customer retention doing by channel?”",
+            initial: "Where do you want to steer today?",
           }}
         />
       </div>
@@ -214,7 +254,7 @@ export default function Page() {
         properties={{ persona }}
         showDevConsole={false}
       >
-        <Workbench />
+        <Workbench persona={persona} />
       </CopilotKit>
     </div>
   );

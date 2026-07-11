@@ -131,6 +131,7 @@ body {
 }
 
 .chat-pane {
+  position: relative; /* anchors the suggestion chips above the input */
   min-width: 0;
   /* grid items default to min-height:auto - without this the pane grows with
      its content and the input scrolls off-page instead of messages scrolling */
