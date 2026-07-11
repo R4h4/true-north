@@ -1,0 +1,34 @@
+{
+  "request": {"argv": ["tn", "kg", "query", "--token", "tok-analyst-binh", "MATCH (m:Metric {key: 'repeat_purchase_rate_90d'}) OPTIONAL MATCH (m)-[:HAS_DIMENSION]->(d:Dimension) OPTIONAL MATCH (k:Constraint)-[:CONSTRAINS]->(m) OPTIONAL MATCH (m)-[:COMPUTED_FROM]->(t:Table) RETURN m, collect(DISTINCT d) AS dims, collect(DISTINCT k) AS caveats, collect(DISTINCT t) AS tables"]},
+  "response": {
+    "contract_version": "0.3",
+    "ok": true,
+    "user": {"id": "u_binh", "role": "data_analyst"},
+    "result": {
+      "records": [
+        {
+          "m": {"_label": "Metric", "key": "repeat_purchase_rate_90d", "name": "Repeat-purchase rate (90d)", "description": "Share of customers with a second purchase within 90 days of their first.", "type": "ratio", "unit": "ratio", "formula": "customers_with_repeat_within_90d / customers_with_first_purchase", "version": "0.1", "_access": {"readable": true}},
+          "dims": [
+            {"_label": "Dimension", "key": "channel", "name": "Sales channel", "description": "in_store | web | app | b2b", "canonical_values": ["app", "b2b", "in_store", "web"], "_access": {"readable": true}},
+            {"_label": "Dimension", "key": "category", "name": "Product category", "description": "Top-level product category of the first purchase.", "canonical_values": ["Accessory", "Laptop", "PC Component", "Peripheral", "Smartphone"], "_access": {"readable": true}}
+          ],
+          "caveats": [
+            {"_label": "Constraint", "key": "nullable_customer_id", "statement": "Walk-in retail lines often have NULL customer_id; B2B always has one. Denominator is customers with a first purchase, so NULL-customer lines are excluded — state this.", "severity": "warning"}
+          ],
+          "tables": [
+            {"_label": "Table", "key": "fact_sales_lines", "description": "One row per basket line; net_amount is booked (gross of returns).", "grain": "sales line", "freshness_note": "refreshed daily", "_access": {"readable": true}},
+            {"_label": "Table", "key": "dim_customer", "description": "Loyalty customers; walk-ins are not present.", "grain": "customer", "freshness_note": "refreshed daily", "_access": {"readable": true}}
+          ]
+        }
+      ]
+    },
+    "metadata": {
+      "graph_compiled_at": "2026-07-11T18:00:00",
+      "applied_permissions": [
+        {"type": "column_tokenized", "column": "fact_sales_lines.customer_id", "display": "customer ids are stable tokens"}
+      ]
+    },
+    "warnings": [],
+    "error": null
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "request": {"argv": ["tn", "query", "--token", "tok-exec-mai", "--metric", "net_revenue", "--group-by", "channel"]},
+  "response": {
+    "contract_version": "0.3",
+    "ok": true,
+    "user": {"id": "u_mai", "role": "executive"},
+    "result": {
+      "columns": [
+        {"name": "channel", "type": "categorical", "unit": null},
+        {"name": "net_revenue", "type": "money", "unit": "VND"}
+      ],
+      "rows": [
+        ["app", 291402118000],
+        ["b2b", 4123998877000],
+        ["in_store", 1187654321000],
+        ["web", 356210945000]
+      ],
+      "row_count": 4
+    },
+    "metadata": {
+      "as_of": "2025-12-31",
+      "freshness": {"fact_sales_lines": "2025-12-31", "fact_returns": "2025-12-31"},
+      "applied_permissions": [
+        {"type": "column_tokenized", "column": "fact_sales_lines.customer_id", "display": "customer ids are stable tokens"}
+      ],
+      "provenance": {
+        "metric_key": "net_revenue",
+        "metric_version": "0.1",
+        "tables": ["fact_sales_lines", "fact_returns"],
+        "constraint_keys": ["b2b_value_skew", "returns_reduce_gross"],
+        "compiled_sql": "SELECT channel, SUM(net_amount) - COALESCE(SUM(refund_amount), 0) AS net_revenue FROM ... GROUP BY channel ORDER BY channel"
+      }
+    },
+    "warnings": [],
+    "error": null
+  }
+}

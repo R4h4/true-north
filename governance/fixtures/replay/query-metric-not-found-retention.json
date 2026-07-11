@@ -1,0 +1,21 @@
+{
+  "request": {"argv": ["tn", "query", "--token", "tok-analyst-binh", "--metric", "retention"]},
+  "response": {
+    "contract_version": "0.3",
+    "ok": false,
+    "user": {"id": "u_binh", "role": "data_analyst"},
+    "result": null,
+    "metadata": {},
+    "warnings": [],
+    "error": {
+      "code": "METRIC_NOT_FOUND",
+      "message": "'retention' is not a metric key; it matches multiple governed definitions — ask the user which one",
+      "details": {
+        "candidates": [
+          {"key": "repeat_purchase_rate_90d", "name": "Repeat-purchase rate (90d)", "definition": "Share of customers with a second purchase within 90 days of their first."},
+          {"key": "member_active_rate_30d", "name": "Member active rate (30d)", "definition": "Share of loyalty members with any activity in the last 30 days."}
+        ]
+      }
+    }
+  }
+}
