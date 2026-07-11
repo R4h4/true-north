@@ -1,0 +1,37 @@
+{
+  "request": {"argv": ["tn", "query", "--token", "tok-analyst-binh", "--metric", "repeat_purchase_rate_90d", "--group-by", "channel"]},
+  "response": {
+    "contract_version": "0.3",
+    "ok": true,
+    "user": {"id": "u_binh", "role": "data_analyst"},
+    "result": {
+      "columns": [
+        {"name": "channel", "type": "categorical", "unit": null},
+        {"name": "repeat_purchase_rate_90d", "type": "ratio", "unit": "ratio"}
+      ],
+      "rows": [
+        ["app", 0.412],
+        ["b2b", 0.783],
+        ["in_store", 0.229],
+        ["web", 0.317]
+      ],
+      "row_count": 4
+    },
+    "metadata": {
+      "as_of": "2025-12-31",
+      "freshness": {"fact_sales_lines": "2025-12-31", "dim_customer": "2025-12-31"},
+      "applied_permissions": [
+        {"type": "column_tokenized", "column": "fact_sales_lines.customer_id", "display": "customer ids are stable tokens"}
+      ],
+      "provenance": {
+        "metric_key": "repeat_purchase_rate_90d",
+        "metric_version": "0.1",
+        "tables": ["fact_sales_lines", "dim_customer"],
+        "constraint_keys": ["nullable_customer_id"],
+        "compiled_sql": "WITH firsts AS (...) SELECT channel, COUNT(...) FILTER (...) / COUNT(...) AS repeat_purchase_rate_90d FROM ... GROUP BY channel ORDER BY channel"
+      }
+    },
+    "warnings": [],
+    "error": null
+  }
+}

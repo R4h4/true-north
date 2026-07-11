@@ -113,6 +113,8 @@ Every command returns:
 
 **Existence vs. permission is always distinguishable**: not-found is `METRIC_NOT_FOUND`; exists-but-forbidden is `ACCESS_DENIED_*` with a reason. That distinction is a product feature for this demo, not a leak. There is no fuzzy resolution on the warehouse surface — exact keys only; *concept* ambiguity is represented in the graph (§4.3) and expected to be handled there, across the harness's KG rounds.
 
+**Denial precedence**: when a `tn query` metric is uncomputable because it reads a **table** the role cannot read, the error is `ACCESS_DENIED_TABLE` (the blocking resource), not `ACCESS_DENIED_METRIC`. `ACCESS_DENIED_METRIC` is reserved for masked-column-derived denials. Catalog surfaces (`metrics list`/`describe`) still show such metrics with `access.allowed: false` and the table-based reason.
+
 ## 3. Commands
 
 ### `tn whoami --token T`
@@ -221,6 +223,7 @@ No real auth (static tokens), no write path anywhere, single metric per `tn quer
 
 ## Changelog
 
+- **0.3 clarifications (2026-07-11, envelope version unchanged)** — Denial precedence: table-read blocks return `ACCESS_DENIED_TABLE`; `ACCESS_DENIED_METRIC` reserved for masked-column denials. Golden-README matcher conventions codified (exact-match field list; nullable template scalars; variant-shape record lists match positionally). Agent-facing usage guide added at `docs/USING-TN.md`.
 - **0.3** — DSL confirmed as the only warehouse surface (raw SQL ruled out). `applied_permissions`/`whoami.permissions` become typed objects (conformance-testable). Scalar serialization table (DATE/TIMESTAMP/NULL/NaN). `INTERNAL` error code. Golden examples in `contracts/examples/` made normative for structure; contract PRs must update them. `graph_compiled_at` on KG responses. All four services pre-registered as uv workspace members.
 - **0.2** — Normative-only rewrite: internals moved to service READMEs; `AMBIGUOUS_CONCEPT` dropped (exact-key surface, `METRIC_NOT_FOUND` + candidates; ambiguity lives in the graph); recursive Cypher serialization + `_access` scope; per-table freshness; number-safety; filter grammar, `--grain`, deterministic ordering; `ACCESS_DENIED_DIMENSION`; personas as observable behavior.
 - **0.1** — Initial contract: commands, envelope, error semantics, KG data model, personas.

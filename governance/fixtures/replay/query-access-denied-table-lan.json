@@ -1,0 +1,19 @@
+{
+  "request": {"argv": ["tn", "query", "--token", "tok-mkt-lan", "--metric", "inventory_days"]},
+  "response": {
+    "contract_version": "0.3",
+    "ok": false,
+    "user": {"id": "u_lan", "role": "marketing_ops"},
+    "result": null,
+    "metadata": {},
+    "warnings": [],
+    "error": {
+      "code": "ACCESS_DENIED_TABLE",
+      "message": "role marketing_ops cannot read table fact_inventory",
+      "details": {
+        "table": "fact_inventory",
+        "reason": "fact_inventory is not readable for role marketing_ops"
+      }
+    }
+  }
+}

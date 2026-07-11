@@ -1,0 +1,27 @@
+{
+  "request": {"argv": ["tn", "whoami", "--token", "tok-mkt-lan"]},
+  "response": {
+    "contract_version": "0.3",
+    "ok": true,
+    "user": {"id": "u_lan", "role": "marketing_ops"},
+    "result": {
+      "user": {"id": "u_lan", "name": "Lan", "role": "marketing_ops"},
+      "readable_tables": ["dim_customer", "dim_promotion", "dim_sku", "dim_store", "fact_returns", "fact_sales_lines", "fact_traffic"],
+      "denied_metrics": [
+        {"key": "gross_margin", "reason": "uses masked column cost_amount"},
+        {"key": "inventory_days", "reason": "uses table fact_inventory, not readable for role marketing_ops"}
+      ],
+      "permissions": [
+        {"type": "column_masked", "column": "fact_sales_lines.cost_amount", "display": "cost columns are masked for role marketing_ops"},
+        {"type": "column_masked", "column": "dim_sku.unit_cost", "display": "dim_sku.unit_cost is masked"},
+        {"type": "column_masked", "column": "dim_customer.province", "display": "dim_customer.province is masked"},
+        {"type": "column_banded", "column": "dim_customer.birth_year", "display": "birth year is disclosed as a 5-year band"},
+        {"type": "column_tokenized", "column": "fact_sales_lines.customer_id", "display": "customer ids are stable tokens"},
+        {"type": "column_tokenized", "column": "dim_customer.customer_id", "display": "customer ids are stable tokens"}
+      ]
+    },
+    "metadata": {},
+    "warnings": [],
+    "error": null
+  }
+}

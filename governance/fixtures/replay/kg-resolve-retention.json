@@ -1,0 +1,30 @@
+{
+  "request": {"argv": ["tn", "kg", "query", "--token", "tok-analyst-binh", "MATCH (c:Concept) WHERE c.name =~ '(?i).*retention.*' OR any(a IN c.aliases WHERE a =~ '(?i).*retention.*') OPTIONAL MATCH (c)<-[:VARIANT_OF]-(v:Concept)-[:MEASURED_BY]->(m:Metric) RETURN c, v, m"]},
+  "response": {
+    "contract_version": "0.3",
+    "ok": true,
+    "user": {"id": "u_binh", "role": "data_analyst"},
+    "result": {
+      "records": [
+        {
+          "c": {"_label": "Concept", "key": "customer_retention", "name": "Customer Retention", "definition": "The degree to which customers keep transacting or stay active over time. Ambiguous: pick a variant.", "aliases": ["retention", "customer retention", "churn inverse"]},
+          "v": {"_label": "Concept", "key": "repeat_purchase_retention", "name": "Repeat-purchase retention", "definition": "Share of customers who purchase again within a fixed window.", "aliases": ["repeat purchase", "rebuy rate"]},
+          "m": {"_label": "Metric", "key": "repeat_purchase_rate_90d", "name": "Repeat-purchase rate (90d)", "description": "Share of customers with a second purchase within 90 days of their first.", "type": "ratio", "unit": "ratio", "formula": "customers_with_repeat_within_90d / customers_with_first_purchase", "version": "0.1", "_access": {"readable": true}}
+        },
+        {
+          "c": {"_label": "Concept", "key": "customer_retention", "name": "Customer Retention", "definition": "The degree to which customers keep transacting or stay active over time. Ambiguous: pick a variant.", "aliases": ["retention", "customer retention", "churn inverse"]},
+          "v": {"_label": "Concept", "key": "member_activity_retention", "name": "Loyalty-member activity retention", "definition": "Share of loyalty members active in a rolling window.", "aliases": ["member active rate", "active member retention"]},
+          "m": {"_label": "Metric", "key": "member_active_rate_30d", "name": "Member active rate (30d)", "description": "Share of loyalty members with any activity in the last 30 days.", "type": "ratio", "unit": "ratio", "formula": "members_active_last_30d / members_total", "version": "0.1", "_access": {"readable": true}}
+        }
+      ]
+    },
+    "metadata": {
+      "graph_compiled_at": "2026-07-11T18:00:00",
+      "applied_permissions": [
+        {"type": "column_tokenized", "column": "fact_sales_lines.customer_id", "display": "customer ids are stable tokens"}
+      ]
+    },
+    "warnings": [],
+    "error": null
+  }
+}

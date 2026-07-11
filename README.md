@@ -52,4 +52,4 @@ uv run python -m generator.generate --scale small --seed 42   # build demo data
 uv run python -m query.cli "SELECT count(*) FROM fact_sales_lines"
 ```
 
-See `source/README.md` for the dataset and generator details, `docs/phongvu-domain.md` for the domain research.
+See `docs/USING-TN.md` for **how to use the `tn` CLI** (agent guide: the intended KG→query loop, error handling, and which requests the current replay stub answers), `source/README.md` for the dataset and generator details, `docs/phongvu-domain.md` for the domain research.

@@ -1,0 +1,37 @@
+{
+  "request": {"argv": ["tn", "kg", "query", "--token", "tok-exec-mai", "MATCH (m:Metric {key: 'net_revenue'}) OPTIONAL MATCH (m)-[:HAS_DIMENSION]->(d:Dimension) OPTIONAL MATCH (k:Constraint)-[:CONSTRAINS]->(m) OPTIONAL MATCH (m)-[:COMPUTED_FROM]->(t:Table) RETURN m, collect(DISTINCT d) AS dims, collect(DISTINCT k) AS caveats, collect(DISTINCT t) AS tables"]},
+  "response": {
+    "contract_version": "0.3",
+    "ok": true,
+    "user": {"id": "u_mai", "role": "executive"},
+    "result": {
+      "records": [
+        {
+          "m": {"_label": "Metric", "key": "net_revenue", "name": "Net revenue", "description": "Sales net of returns", "type": "derived", "unit": "VND", "formula": "sum(net_amount) - sum(refund_amount)", "version": "0.1", "_access": {"readable": true}},
+          "dims": [
+            {"_label": "Dimension", "key": "channel", "name": "Sales channel", "description": "in_store | web | app | b2b", "canonical_values": ["app", "b2b", "in_store", "web"], "_access": {"readable": true}},
+            {"_label": "Dimension", "key": "category", "name": "Product category", "description": "Top-level product category.", "canonical_values": ["Accessory", "Laptop", "PC Component", "Peripheral", "Smartphone"], "_access": {"readable": true}},
+            {"_label": "Dimension", "key": "region", "name": "Store region", "description": "North | Central | South", "canonical_values": ["Central", "North", "South"], "_access": {"readable": true}},
+            {"_label": "Dimension", "key": "order_date", "name": "Order date", "description": "Basket timestamp, business-local.", "canonical_values": [], "_access": {"readable": true}}
+          ],
+          "caveats": [
+            {"_label": "Constraint", "key": "b2b_value_skew", "statement": "B2B is a minority of baskets but the majority of value; state whether B2B is included.", "severity": "warning"},
+            {"_label": "Constraint", "key": "returns_reduce_gross", "statement": "Returns are booked in fact_returns, not fact_sales_lines; net revenue subtracts them. Return rates are high for PC Component, low for Accessory.", "severity": "warning"}
+          ],
+          "tables": [
+            {"_label": "Table", "key": "fact_sales_lines", "description": "One row per basket line; net_amount is booked (gross of returns).", "grain": "sales line", "freshness_note": "refreshed daily", "_access": {"readable": true}},
+            {"_label": "Table", "key": "fact_returns", "description": "Refunds; refund_amount reduces net revenue. Separate table from sales.", "grain": "return line", "freshness_note": "refreshed daily", "_access": {"readable": true}}
+          ]
+        }
+      ]
+    },
+    "metadata": {
+      "graph_compiled_at": "2026-07-11T18:00:00",
+      "applied_permissions": [
+        {"type": "column_tokenized", "column": "fact_sales_lines.customer_id", "display": "customer ids are stable tokens"}
+      ]
+    },
+    "warnings": [],
+    "error": null
+  }
+}
