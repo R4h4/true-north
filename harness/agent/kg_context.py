@@ -44,7 +44,10 @@ def merge_envelope(graph: dict, envelope: Any) -> dict:
     """Merge one kg-query envelope into the graph. Returns the graph (mutated)."""
     if not isinstance(envelope, dict) or not envelope.get("ok"):
         return graph
-    records = ((envelope.get("result") or {}).get("records")) or []
+    result = envelope.get("result") or {}
+    if isinstance(result, dict) and result.get("key") and "access" in result:
+        return _merge_describe(graph, result)
+    records = result.get("records") or []
     known = {n["id"] for n in graph["nodes"]}
     known_edges = {(e["source"], e["target"], e["label"]) for e in graph["edges"]}
 
@@ -80,6 +83,50 @@ def merge_envelope(graph: dict, envelope: Any) -> dict:
                     if edge not in known_edges:
                         known_edges.add(edge)
                         graph["edges"].append({"source": src, "target": dst, "label": rel})
+    return _prune_to_decision_path(graph)
+
+
+def _merge_describe(graph: dict, result: dict) -> dict:
+    """Merge a `metrics describe` envelope: the agent explicitly investigated
+    this metric, so it belongs on the scratchpad - crucially including denied
+    metrics, which render as locked nodes."""
+    for node in graph["nodes"]:
+        node["new"] = False
+    known = {n["id"] for n in graph["nodes"]}
+    locked = (result.get("access") or {}).get("allowed") is False
+
+    metric_id = f"Metric:{result['key']}"
+    if metric_id not in known:
+        graph["nodes"].append(
+            {
+                "id": metric_id,
+                "label": "Metric",
+                "name": result.get("name") or result["key"],
+                "locked": locked,
+                "new": True,
+            }
+        )
+    else:
+        for node in graph["nodes"]:
+            if node["id"] == metric_id and locked:
+                node["locked"] = True
+
+    concept = result.get("concept") or {}
+    if concept.get("key"):
+        concept_id = f"Concept:{concept['key']}"
+        if concept_id not in known:
+            graph["nodes"].append(
+                {
+                    "id": concept_id,
+                    "label": "Concept",
+                    "name": concept.get("name") or concept["key"],
+                    "locked": False,
+                    "new": True,
+                }
+            )
+        edge = {"source": concept_id, "target": metric_id, "label": "MEASURED_BY"}
+        if edge not in graph["edges"]:
+            graph["edges"].append(edge)
     return _prune_to_decision_path(graph)
 
 

@@ -119,6 +119,8 @@ agui_agent = GovernedStrandsAgent(
             "resolve_term": _kg_behavior,
             "get_metric_context": _kg_behavior,
             "check_metric_access": _kg_behavior,
+            # describe carries access.allowed - denied metrics render locked
+            "describe_metric": _kg_behavior,
         }
     ),
 )
