@@ -1,0 +1,1 @@
+basket_id,line_id,ts,store_id,sku_id,customer_id,channel,qty,gross_amount,discount_amount,net_amount,cost_amount,promo_id
