@@ -80,6 +80,17 @@ def test_variant_of_edges_point_to_parents(graph):
     assert vo["basket-value"] == "basket-size"
 
 
+def test_dimension_nodes_carry_type(graph, semantic):
+    # CONTRACT §4.1: Dimension nodes carry `type` (categorical|time|geo|entity),
+    # sourced from the dimension YAML.
+    dim_nodes = {n.key: n.props for n in graph.nodes if n.label == "Dimension"}
+    assert dim_nodes, "expected Dimension nodes"
+    for key, props in dim_nodes.items():
+        assert "type" in props, f"Dimension {key} missing `type` node property"
+        assert props["type"] == semantic.dimensions[key].type
+        assert props["type"] in ("categorical", "time", "geo", "entity")
+
+
 def test_computed_from_excludes_join_only_dims(graph):
     # net_revenue's measures live on fact_sales_lines + fact_returns; dim_store/dim_sku/
     # dim_customer are join-only and must NOT be COMPUTED_FROM targets.

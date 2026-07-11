@@ -54,16 +54,24 @@ def test_denied_metric_carries_reason(access_index, fakes):
     assert out["_access"]["reason"] == "uses masked column cost_amount"
 
 
-def test_dimension_node_shape_no_type(access_index, fakes):
+def test_dimension_node_carries_type(access_index, fakes):
+    # CONTRACT §4.1 requires Dimension nodes carry `type`. The compiler now stamps it
+    # (build._dimension_props), so a real Dimension node serializes WITH `type`. The
+    # serializer is a pass-through: whatever props the node has are emitted, plus _access.
+    # (The replay-stub fixture kg-detail-net-revenue.json still omits `type`; that stub is
+    # out of scope for this package and dies at the conformance gate — it is now stale for
+    # the Dimension shape.)
     ser = Serializer(access_index, "data_analyst")
     node = fakes.Node("Dimension", {
         "key": "channel", "name": "Sales channel", "description": "…",
+        "type": "categorical",
         "canonical_values": ["app", "b2b", "in_store", "web"],
     })
     out = ser.value(node)
-    fixture_d = _load_record("kg-detail-net-revenue.json")["dims"][0]
-    assert set(out.keys()) == set(fixture_d.keys())
-    assert "type" not in out  # CONTRACT fixtures omit `type` on Dimension instances
+    assert out["type"] == "categorical"
+    assert set(out.keys()) == {
+        "_label", "key", "name", "description", "type", "canonical_values", "_access",
+    }
 
 
 def test_concept_and_constraint_have_no_access(access_index, fakes):

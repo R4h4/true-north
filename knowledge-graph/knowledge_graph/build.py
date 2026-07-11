@@ -7,7 +7,7 @@ tests exercise the invariants without a running database.
 Node/edge property shapes match the replay-fixture instances exactly (CONTRACT §3/§4.1):
 - Concept:    {key, name, definition, aliases}
 - Metric:     {key, name, description, type, unit, formula, version}
-- Dimension:  {key, name, description, canonical_values}   (no `type` yet — see change 5)
+- Dimension:  {key, name, description, type, canonical_values}   (CONTRACT §4.1)
 - Table:      {key, description, grain, freshness_note}
 - Constraint: {key, statement, severity}
 - Role:       {key, description}
@@ -71,6 +71,7 @@ def _dimension_props(d) -> dict:
         "key": d.key,
         "name": d.name,
         "description": (d.description or "").strip(),
+        "type": d.type,
         "canonical_values": list(d.canonical_values or []),
     }
 
