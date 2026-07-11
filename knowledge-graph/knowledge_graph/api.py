@@ -16,10 +16,12 @@ Raises knowledge_graph.errors.QueryRejected (-> QUERY_REJECTED) and InvalidQuery
 
 from __future__ import annotations
 
+from governance.policy import load_policy as load_governance_policy
+
 from knowledge_graph import config
 from knowledge_graph.access import AccessIndex
 from knowledge_graph.errors import InvalidQuery
-from knowledge_graph.loaders import load_policy, load_semantic
+from knowledge_graph.loaders import load_semantic
 from knowledge_graph.readonly import check_read_only
 from knowledge_graph.schema_doc import schema_result
 from knowledge_graph.serialize import Serializer
@@ -31,9 +33,9 @@ def get_schema() -> dict:
 
 
 def _access_index() -> AccessIndex:
-    policy = load_policy(config.USERS_YAML)
     semantic = load_semantic(config.SEMANTIC_DIR)
-    return AccessIndex(policy, semantic)
+    policy = load_governance_policy(config.USERS_YAML, semantic=semantic)
+    return AccessIndex(policy)
 
 
 def _driver():

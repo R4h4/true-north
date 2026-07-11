@@ -18,6 +18,8 @@ import sys
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+from governance.policy import load_policy as load_governance_policy
+
 from knowledge_graph import config
 from knowledge_graph.access import AccessIndex
 from knowledge_graph.build import Graph, assert_invariants, build_graph
@@ -29,13 +31,16 @@ from knowledge_graph.loaders import (
 )
 
 
-def build_from_sources() -> tuple[Graph, dict, AccessIndex]:
+def build_from_sources() -> tuple[Graph, object, AccessIndex]:
     """Load sources, build the graph, assert invariants. No Neo4j needed."""
     vocabulary = load_vocabulary(config.VOCAB_DIR)
     semantic = load_semantic(config.SEMANTIC_DIR)
-    policy = load_policy(config.USERS_YAML)
+    policy = load_policy(config.USERS_YAML)  # raw dict: Role nodes in build_graph
     schema = load_schema(config.SCHEMA_PY)
-    access_index = AccessIndex(policy, semantic)
+    # Access derivation is single-sourced in governance.policy; the KG access index is a
+    # thin adapter over it (ADR 0009).
+    gpolicy = load_governance_policy(config.USERS_YAML, semantic=semantic)
+    access_index = AccessIndex(gpolicy)
 
     graph = build_graph(vocabulary, semantic, policy, schema, access_index)
     assert_invariants(graph, semantic)

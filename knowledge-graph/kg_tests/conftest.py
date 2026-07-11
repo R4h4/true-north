@@ -37,6 +37,7 @@ def semantic():
 
 @pytest.fixture(scope="session")
 def policy() -> dict:
+    # Raw policy dict — build_graph reads roles from it for the Role nodes.
     return load_policy(config.USERS_YAML)
 
 
@@ -46,8 +47,11 @@ def schema():
 
 
 @pytest.fixture(scope="session")
-def access_index(policy, semantic) -> AccessIndex:
-    return AccessIndex(policy, semantic)
+def access_index(semantic) -> AccessIndex:
+    # Access derivation is single-sourced in governance.policy; the KG index adapts it.
+    from governance.policy import load_policy as load_governance_policy
+
+    return AccessIndex(load_governance_policy(config.USERS_YAML, semantic=semantic))
 
 
 @pytest.fixture(scope="session")
