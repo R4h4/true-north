@@ -26,6 +26,8 @@ compute:
       joins:
         - {table: fact_disbursements, left_on: loan_id, right_on: loan_id}
         - {table: dim_customer, left_on: fact_disbursements.customer_id, right_on: customer_id}
+        - {table: dim_product, left_on: fact_disbursements.product_key, right_on: product_key}
+        - {table: dim_channel, left_on: fact_disbursements.channel, right_on: channel_key}
     total_outstanding:
       table: fact_loan_snapshots
       expr: outstanding_principal
@@ -36,4 +38,6 @@ compute:
       joins:
         - {table: fact_disbursements, left_on: loan_id, right_on: loan_id}
         - {table: dim_customer, left_on: fact_disbursements.customer_id, right_on: customer_id}
+        - {table: dim_product, left_on: fact_disbursements.product_key, right_on: product_key}
+        - {table: dim_channel, left_on: fact_disbursements.channel, right_on: channel_key}
   expr: "dpd30_outstanding / total_outstanding"
