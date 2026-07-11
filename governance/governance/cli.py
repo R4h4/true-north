@@ -1,10 +1,9 @@
 """Governed CLI (`tn`) — Typer app (CONTRACT.md v0.3).
 
-The warehouse surface (whoami, metrics list/describe, dimensions list/describe,
-query) is served by the REAL governance service (governance.service): persona
-resolution, derived denials, SQLGlot-compiled DuckDB queries, disclosure. The
-knowledge-graph surface (kg schema/query) still replays canned envelopes until
-Agent B's graph is wired in by the coordinator.
+Every command is served by the REAL governance service (governance.service):
+persona resolution, derived denials, SQLGlot-compiled DuckDB queries, and the
+knowledge-graph surface (kg schema/query) against live Neo4j via
+knowledge_graph.api. No replay paths remain in the CLI.
 
 All output is a single JSON envelope on stdout (logs on stderr); the exit code
 follows `response.ok` (0 true / 1 false). Missing required options (e.g.
@@ -14,18 +13,16 @@ follows `response.ok` (0 true / 1 false). Missing required options (e.g.
 from __future__ import annotations
 
 import json
-import sys
-from pathlib import Path
 from typing import Optional
 
 import typer
 
-from governance import replay, service
+from governance import service
 
 app = typer.Typer(
     add_completion=False,
     no_args_is_help=True,
-    help="true-north governed CLI (stub — canned replay).",
+    help="true-north governed CLI.",
 )
 metrics_app = typer.Typer(add_completion=False, no_args_is_help=True)
 dimensions_app = typer.Typer(add_completion=False, no_args_is_help=True)
@@ -33,32 +30,6 @@ kg_app = typer.Typer(add_completion=False, no_args_is_help=True)
 app.add_typer(metrics_app, name="metrics")
 app.add_typer(dimensions_app, name="dimensions")
 app.add_typer(kg_app, name="kg")
-
-
-def _repo_root() -> Path:
-    # governance/governance/cli.py -> repo root is three parents up.
-    return Path(__file__).resolve().parents[2]
-
-
-def _engine() -> replay.ReplayEngine:
-    root = _repo_root()
-    return replay.ReplayEngine.from_dirs(
-        examples_dir=root / "contracts" / "examples",
-        replay_dir=root / "governance" / "fixtures" / "replay",
-    )
-
-
-def _emit(argv: list[str]) -> None:
-    """Replay path (kg surface only): look up a fixture, print it, exit per `ok`.
-
-    argv is the reconstructed command as the contract expresses it (no leading
-    "tn"). Unmatched -> INTERNAL envelope, exit 1.
-    """
-    envelope = _engine().lookup(argv)
-    if envelope is None:
-        print("stub: no replay fixture for this request", file=sys.stderr)
-        envelope = replay.internal_error_envelope()
-    _emit_envelope(envelope)
 
 
 def _emit_envelope(envelope: dict) -> None:
@@ -133,12 +104,13 @@ def dimensions_describe(key: str, token: str = typer.Option(..., "--token")):
 @kg_app.command("schema")
 def kg_schema():
     """Graph schema — no token required."""
-    _emit(["kg", "schema"])
+    _emit_envelope(service.kg_schema())
 
 
 @kg_app.command("query")
 def kg_query(cypher: str, token: str = typer.Option(..., "--token")):
-    _emit(["kg", "query", "--token", token, cypher])
+    """Read-only Cypher against the live graph, `_access`-annotated."""
+    _emit_envelope(service.kg_query(cypher, token))
 
 
 if __name__ == "__main__":

@@ -9,6 +9,7 @@ dependencies = [
     "sqlglot>=25",
     "pyyaml>=6",
     "true-north-source",
+    "true-north-knowledge-graph",
 ]
 
 [project.scripts]
@@ -23,3 +24,4 @@ packages = ["governance"]
 
 [tool.uv.sources]
 true-north-source = { workspace = true }
+true-north-knowledge-graph = { workspace = true }

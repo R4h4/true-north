@@ -341,6 +341,7 @@ dependencies = [
     { name = "duckdb" },
     { name = "pyyaml" },
     { name = "sqlglot" },
+    { name = "true-north-knowledge-graph" },
     { name = "true-north-source" },
     { name = "typer" },
 ]
@@ -350,6 +351,7 @@ requires-dist = [
     { name = "duckdb", specifier = ">=1.1" },
     { name = "pyyaml", specifier = ">=6" },
     { name = "sqlglot", specifier = ">=25" },
+    { name = "true-north-knowledge-graph", editable = "knowledge-graph" },
     { name = "true-north-source", editable = "source" },
     { name = "typer", specifier = ">=0.12" },
 ]

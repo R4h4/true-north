@@ -51,6 +51,23 @@ def _graph_compiled_at(session) -> str | None:
     return rec["ts"] if rec else None
 
 
+def compiled_at() -> str | None:
+    """Best-effort compile stamp for surfaces that don't run a query (kg schema).
+
+    Returns None when the graph is unreachable rather than raising — the schema
+    payload itself is static and must not require a live DB.
+    """
+    try:
+        driver = _driver()
+        try:
+            with driver.session() as session:
+                return _graph_compiled_at(session)
+        finally:
+            driver.close()
+    except Exception:
+        return None
+
+
 def run_cypher(cypher: str, role: str, *, access_index: AccessIndex | None = None) -> dict:
     """Execute read-only Cypher for `role`, returning serialized records + the compile stamp.
 

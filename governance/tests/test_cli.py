@@ -74,13 +74,15 @@ def test_unknown_metric_is_metric_not_found_exit_one():
     assert env["error"]["code"] == "METRIC_NOT_FOUND"
 
 
-def test_unmatched_kg_request_is_internal_exit_one():
-    # The KG surface still replays: an un-fixtured cypher -> INTERNAL, exit 1.
+def test_kg_query_unknown_label_is_ok_empty():
+    # Real graph surface: valid cypher over a label that doesn't exist is a
+    # successful query with zero records, not an error.
     proc = run_tn("kg", "query", "--token", "tok-analyst-binh", "MATCH (n:Nope) RETURN n")
-    assert proc.returncode == 1
+    assert proc.returncode == 0
     env = parse_stdout(proc)
-    assert env["ok"] is False
-    assert env["error"]["code"] == "INTERNAL"
+    assert env["ok"] is True
+    assert env["result"]["records"] == []
+    assert "graph_compiled_at" in env["metadata"]
 
 
 def test_missing_token_is_usage_error_exit_two():

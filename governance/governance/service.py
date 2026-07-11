@@ -1,8 +1,7 @@
 """Real warehouse-surface command implementations for the `tn` CLI.
 
 Replaces the replay path for: whoami, metrics list/describe, dimensions
-list/describe, query. The KG commands stay on the replay stub (wired to Agent B's
-graph later by the coordinator).
+list/describe, query, and the KG surface (kg schema/query via knowledge_graph.api).
 
 Each function returns a complete envelope dict (CONTRACT §2). Auth is resolved
 first; an unknown token is AUTH_INVALID_TOKEN. Governance (denials, row filters,
@@ -439,3 +438,89 @@ def _denial_envelope(persona, denial, metric_key: str) -> dict:
         f"role {persona.role} cannot compute {metric_key}",
         {"reason": denial.reason},
     )
+
+
+# --- knowledge graph ----------------------------------------------------------
+# Imported lazily so the warehouse surface works without the kg package's
+# neo4j dependency loaded.
+
+
+def kg_schema() -> dict:
+    """Graph self-description — tokenless per USING-TN; static payload."""
+    from knowledge_graph import api as _kg
+
+    return _env.ok_envelope(
+        None, _kg.get_schema(), {"graph_compiled_at": _kg.compiled_at()}, []
+    )
+
+
+def kg_query(cypher: str, token: str) -> dict:
+    """Read-only Cypher for the calling persona, `_access`-annotated (CONTRACT §4.4)."""
+    from knowledge_graph import api as _kg
+    from knowledge_graph.errors import InvalidQuery, QueryRejected
+
+    sem, pol = _services()
+    persona, err = _auth(pol, token)
+    if err is not None:
+        return err
+    try:
+        out = _kg.run_cypher(cypher, persona.role)
+    except QueryRejected as e:
+        return _env.error_envelope(
+            persona.public_short(), "QUERY_REJECTED", e.message, {"reason": e.reason}
+        )
+    except InvalidQuery as e:
+        return _env.error_envelope(
+            persona.public_short(), "INVALID_QUERY", e.message, {"reason": e.message}
+        )
+    access = pol.access_for(persona.role)
+    touched = _kg_touched_tables(out["records"], sem)
+    metadata = {
+        "graph_compiled_at": out["graph_compiled_at"],
+        "applied_permissions": _kg_applied_permissions(access, persona, touched),
+    }
+    return _env.ok_envelope(persona.public_short(), {"records": out["records"]}, metadata, [])
+
+
+def _kg_touched_tables(records, sem: SemanticLayer) -> set[str]:
+    """Physical tables behind the governed nodes appearing anywhere in the records."""
+    touched: set[str] = set()
+
+    def walk(v):
+        if isinstance(v, dict):
+            label, key = v.get("_label"), v.get("key")
+            if label == "Table" and key:
+                touched.add(key)
+            elif label == "Metric" and key:
+                m = sem.metric(key)
+                if m is not None:
+                    touched.update(m.tables)
+            elif label == "Dimension" and key:
+                d = sem.dimension(key)
+                if d is not None and d.table:
+                    touched.add(d.table)
+            for x in v.values():
+                walk(x)
+        elif isinstance(v, list):
+            for x in v:
+                walk(x)
+
+    walk(records)
+    return touched
+
+
+def _kg_applied_permissions(access, persona, touched: set[str]) -> list[dict]:
+    """Truthful disclosure for the kg surface: only masked/banded columns on
+    touched tables — they explain the `_access` annotations in the records.
+    Row filters and tokenization govern row data, which a graph query never
+    returns, so disclosing them here would be untruthful (per the
+    kg-query-ok-access-annotation golden: lan's tokenized customer_id on the
+    touched table is NOT disclosed, her cost mask is)."""
+    applied: list[dict] = []
+    for obj in access.permission_objects(persona):
+        col = obj.get("column")
+        if obj["type"] not in ("column_masked", "column_banded") or not col:
+            continue
+        if col.split(".", 1)[0] in touched:
+            applied.append(obj)
+    return applied
