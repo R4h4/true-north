@@ -58,6 +58,21 @@ Same pattern, zero UI glue.
 | Gradio | Weaker step/HITL primitives than Chainlit |
 | WrenAI | Already rejected (full GenBI product, own semantic layer — bypasses `tn`) |
 
+## Addendum (2026-07-11 17:35 ICT) — UI superseded: Chainlit → AG-UI + CopilotKit
+
+Phong: Chainlit "looks kinda old and ugly". Re-evaluated; **official Strands↔AG-UI
+integration exists** (https://strandsagents.com/docs/community/integrations/ag-ui/ ·
+https://www.copilotkit.ai/blog/aws-strands-agents-now-compatible-with-ag-ui). AG-UI =
+protocol between agent backend and frontend (AWS AgentCore runs it natively since
+Mar 2026). CopilotKit React components = modern chat, HITL interrupts, bi-directional
+shared state → KG side panel as real interactive graph. Strands backend + Langfuse OTel
+unchanged — swap touches UI layer only. Costs: small Next.js app in `harness/ui/`,
+~1 extra day, community-tier integration → day-1 go/no-go spike; Chainlit design kept
+in git history as ~1-day fallback. Onyx also evaluated same day and rejected (full
+platform: own agent loop, no Langfuse, frontend fork needed for side panel — same
+disqualifier class as WrenAI). Open WebUI rejected: pipe foot-guns, no-auth mode shares
+one chat history across visitors — bad for the open demo.
+
 ## Unresolved questions
 
 1. **bedrock-mantle API surface for `openai.gpt-5.5`**: Chat Completions, Responses, or

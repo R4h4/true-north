@@ -43,7 +43,7 @@ observability.
 | Tracing | **Langfuse Cloud free tier** (50k events/mo), fed by **Strands OTel** (`strands-agents[otel]` + `StrandsTelemetry` → `/api/public/otel`) | 15-min setup vs ~45-min 6-container self-host stack. Strands↔Langfuse integration is documented first-party on both sides — replaces the earlier `langfuse.openai` drop-in + manual `@observe` plan. Cost config for `openai.gpt-5.5` still manual in the dashboard. Fallback: self-host on the demo EC2 if hackathon rules demand everything on AWS. |
 | Neo4j | `neo4j:5-community` in Docker (local dev + on demo EC2) | AuraDB Free auto-pauses/deletes and caps size; Docker is identical Cypher, zero surprise. |
 | Deployment | Single EC2 **t3.xlarge** (ap-southeast-1) + docker-compose + IAM instance role | Fits Neo4j + services (+ Langfuse if self-hosted); ~USD 5–7/day, ~50–65 for the week. ECS/App Runner rejected (App Runner in maintenance mode since Apr 2026). |
-| Chat UI | **Chainlit** (native step tree for thoughts/tool calls, `cl.AskUserMessage` for mid-run follow-up questions, `cl.Plotly` charts, **live KG-context sidebar** via `cl.ElementSidebar`), SSH tunnel during dev, **cloudflared quick tunnel** for demo day, **no auth** | Chainlit renders the agentic loop (reasoning, tool choice, human-in-the-loop) as built-in primitives — Streamlit's rerun model fights mid-run interaction. Chart format switches Vega-Lite → Plotly JSON accordingly. Let's Encrypt refuses `*.compute.amazonaws.com` hostnames, so certbot-on-EC2 is a dead end without a domain; a quick tunnel gives a free HTTPS URL. Open access is Phong's call (2026-07-11) — quota guarded by a per-session turn cap + unlisted URL instead of a passphrase. |
+| Chat UI | **AG-UI protocol + CopilotKit** (Next.js) over the **official Strands↔AG-UI integration** — chat timeline with reasoning/tool events, HITL interrupts for follow-up questions, shared-state **KG-context graph side panel**, react-plotly charts; SSH tunnel during dev, **cloudflared quick tunnel** for demo day, **no auth** | Phong's call (2026-07-11) after seeing options: Chainlit works but looks dated; AG-UI gives a modern UI while keeping the Strands backend untouched (protocol boundary, like `tn`). Day-1 go/no-go spike guards the community-tier integration; Chainlit design preserved in git history as the ~1-day fallback. Let's Encrypt refuses `*.compute.amazonaws.com` hostnames → quick tunnel for free HTTPS. Open access — quota guarded by a per-session turn cap + unlisted URL instead of a passphrase. |
 
 ## Parallel-Work Rules (the actual answer to "don't mess up each other")
 
@@ -69,7 +69,7 @@ observability.
 |-------|------|-------|--------|
 | 1 | [Interface Contract & Workfences](./phase-01-interface-contract-workfences.md) | Joint (day 0) | Pending |
 | 2 | [Stub CLI Fixtures & Conformance Tests](./phase-02-mock-governed-cli-conformance-tests.md) | Karsten (PR #4) | Pending |
-| 3 | [Harness Agent: Strands + Chainlit on GPT-5.5, Langfuse, Charts](./phase-03-harness-agent-bedrock-langfuse.md) | Phong | Pending |
+| 3 | [Harness Agent: Strands + AG-UI/CopilotKit on GPT-5.5, Langfuse, Charts](./phase-03-harness-agent-bedrock-langfuse.md) | Phong | Pending |
 | 4 | [Karsten Track: Semantic Layer & Governed Services](./phase-04-karsten-track-semantic-layer-governed-services.md) | Karsten | Pending |
 | 5 | [AWS Environment & Deployment](./phase-05-aws-environment-deployment.md) | Phong | Pending |
 | 6 | [Integration & Demo](./phase-06-integration-demo.md) | Joint | Pending |
@@ -136,14 +136,20 @@ Phase 5A (Phong, day 0-1, parallel)
 8. **Adopt an existing agentic harness, don't build one** (Phong, 2026-07-11) — the
    harness must visibly show thoughts, plan, tool selection, knowledge-retrieval
    location, and ask follow-up questions in a loop until it has enough context to fetch
-   data and build insight reports. Chosen: **Strands Agents SDK** (loop) + **Chainlit**
-   (UI); consequences absorbed in phase 3: no hand-rolled Responses loop, tracing via
-   Strands OTel → Langfuse, charts switch Vega-Lite → Plotly (Chainlit-native), Streamlit
-   replaced. Day-0 verification: bedrock-mantle API surface (Chat Completions vs
-   Responses) for `openai.gpt-5.5` against Strands' OpenAI provider.
-9. **Open demo + live KG-context sidebar** (Phong, 2026-07-11) — no passphrase, anyone
-   with the URL can try it (trade-off accepted: quota burn risk, mitigated by
-   `MAX_TURNS_PER_SESSION` + unlisted cloudflared URL; password auth is a 10-line
-   revert if abused). The Chainlit sidebar renders the session's accumulated KG
-   subgraph after every KG tool call, so users see *why* the agent queries and how
-   context builds up — locked nodes show governance visually (DoD-3).
+   data and build insight reports. Chosen: **Strands Agents SDK** (loop); consequences
+   absorbed in phase 3: no hand-rolled Responses loop, tracing via Strands OTel →
+   Langfuse, charts in Plotly, Streamlit replaced. Day-0 verification: bedrock-mantle
+   API surface (Chat Completions vs Responses) for `openai.gpt-5.5` against Strands'
+   OpenAI provider.
+9. **Open demo + live KG-context side panel** (Phong, 2026-07-11) — no passphrase,
+   anyone with the URL can try it (trade-off accepted: quota burn risk, mitigated by
+   `MAX_TURNS_PER_SESSION` + unlisted cloudflared URL). The side panel renders the
+   session's accumulated KG subgraph after every KG tool call, so users see *why* the
+   agent queries and how context builds up — locked nodes show governance visually
+   (DoD-3).
+10. **UI = AG-UI + CopilotKit, not Chainlit** (Phong, 2026-07-11, chose "modern look"
+   from presented options; Onyx evaluated and rejected same day — it replaces the whole
+   harness, loses Langfuse + Strands + the side panel). Official Strands↔AG-UI
+   integration keeps the backend untouched; Next.js frontend added under `harness/ui/`.
+   Guard: day-1 go/no-go spike on the quickstart; fallback = restore the Chainlit
+   design from git history (~1 day).

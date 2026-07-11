@@ -19,7 +19,7 @@ one EC2 instance so the project demonstrably "runs on AWS".
 - Functional: GPT-5.5 callable via the bedrock-mantle Responses endpoint
   (`openai.gpt-5.5` — confirm exact ID and serving region, us-east-1 vs us-east-2,
   against `aws bedrock list-foundation-models` before hardcoding anything); Langfuse
-  project receiving traces; demo EC2 serving the Chainlit chat with all services up.
+  project receiving traces; demo EC2 serving the harness UI with all services up.
 - Non-functional: the only AWS credential on the EC2 box is a **Bedrock API key scoped to
   bedrock invocation** (bedrock-mantle takes bearer-style auth, so a pure instance-role
   setup doesn't apply; a scoped key is the pragmatic equivalent); daily cost ~USD 5–7
@@ -33,7 +33,8 @@ EC2 t3.xlarge (ap-southeast-1, Ubuntu 22.04, Elastic IP,
                Bedrock API key in env — scoped to bedrock invocation only)
   docker-compose (infra/docker-compose.yml):
     neo4j:5-community          (7474/7687, volume, heap capped ~4G)
-    harness                    (Chainlit :8000; calls `uv run tn` — real CLI by then)
+    harness-agent              (FastAPI AG-UI :8000; calls `uv run tn` — real CLI by then)
+    harness-ui                 (Next.js + CopilotKit :3000; cloudflared points here)
     [langfuse stack]           (only if self-host decision — 6 containers: web, worker,
                                 postgres, clickhouse, redis, minio)
   security group: 22 (team IPs only); nothing else inbound
@@ -86,7 +87,7 @@ EC2 t3.xlarge (ap-southeast-1, Ubuntu 22.04, Elastic IP,
 6. Launch t3.xlarge + instance role + **Elastic IP**; install docker + compose plugin.
    If the Langfuse self-host decision landed: go t3.2xlarge instead — 16 GB does not
    credibly fit Neo4j (~6–7 GB real footprint) + 6 Langfuse containers + full-scale
-   DuckDB spikes + the Chainlit harness.
+   DuckDB spikes + the two harness containers.
 7. Write `infra/docker-compose.yml`: **pin image tags** (neo4j:5.x.y, langfuse versions);
    Neo4j heap capped via the current env names (`NEO4J_server_memory_heap_max__size` —
    the old `dbms.*` names are silently ignored by the 5.x image); Langfuse secrets
