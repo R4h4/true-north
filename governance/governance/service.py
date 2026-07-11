@@ -28,10 +28,37 @@ DATA_DIR = REPO_ROOT / "source" / "data"
 # --- shared plumbing --------------------------------------------------------
 
 
+POLICY_STORE_UNREACHABLE_MSG = (
+    "policy store is not reachable; run: "
+    "docker compose up --wait && uv run python -m governance.pg"
+)
+
+
+class PolicyStoreUnreachable(Exception):
+    """Raised when the runtime policy store (Postgres) cannot be reached."""
+
+
 def _services() -> tuple[SemanticLayer, Policy]:
+    """Semantic layer (from disk) + runtime Policy (from Postgres, ADR 0010).
+
+    users.yaml is still the authored source (load_policy), but the CLI reads the
+    *runtime* policy from the Postgres store hydrated by `python -m governance.pg`.
+    If the store is unreachable we raise PolicyStoreUnreachable; callers turn that
+    into a clean INTERNAL envelope (mirrors the missing-warehouse-data pattern in
+    _execute) rather than leaking a traceback.
+    """
+    from governance.pg import load_policy_from_db
+
     sem = load_semantic()
-    pol = load_policy(semantic=sem)
+    try:
+        pol = load_policy_from_db(semantic=sem)
+    except Exception as e:  # noqa: BLE001 — any driver/connection failure is "unreachable"
+        raise PolicyStoreUnreachable(str(e)) from e
     return sem, pol
+
+
+def _policy_store_error_envelope() -> dict:
+    return _env.error_envelope(None, "INTERNAL", POLICY_STORE_UNREACHABLE_MSG, None)
 
 
 def _auth(pol: Policy, token: str):
