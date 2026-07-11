@@ -119,6 +119,33 @@ def _join_for_table(measure: Measure, target_table: str) -> dict | None:
     return None
 
 
+def _resolve_join_order(measure: Measure, needed: set[str]) -> list[dict]:
+    """Declared-order list of joins to apply: every needed table plus any table a
+    needed join's `left_on` references (transitively). A join whose left side is
+    `<table>.<col>` requires `<table>` to be present first."""
+    want = set(needed)
+    # transitively add prerequisites referenced by a needed join's left_on
+    changed = True
+    while changed:
+        changed = False
+        for jt in list(want):
+            j = _join_for_table(measure, jt)
+            if j is None:
+                raise CompileError(
+                    "INTERNAL",
+                    f"measure '{measure.name}' has no join to '{jt}'",
+                    {"table": jt},
+                )
+            left_on = str(j.get("left_on", ""))
+            if "." in left_on:
+                prereq = left_on.split(".", 1)[0]
+                if prereq != measure.table and prereq not in want:
+                    want.add(prereq)
+                    changed = True
+    # emit in declared order
+    return [j for j in measure.joins if j.get("table") in want]
+
+
 def _column_ref(table: str, column: str) -> exp.Column:
     return exp.column(column, table=table)
 
@@ -151,7 +178,9 @@ def _dim_type(dim: Dimension) -> str:
 
 def _time_bucket(col: exp.Column, grain: str) -> exp.Expression:
     trunc = _GRAIN_TRUNC[grain]
-    return exp.func("DATE_TRUNC", exp.Literal.string(trunc), col)
+    bucket = exp.func("DATE_TRUNC", exp.Literal.string(trunc), col)
+    # buckets are calendar dates, not timestamps (§2 DATE serialization)
+    return exp.Cast(this=bucket, to=exp.DataType.build("DATE"))
 
 
 def _build_measure_query(
@@ -211,17 +240,14 @@ def _build_measure_query(
             if at != measure.table and _join_for_table(measure, at) is not None:
                 needed_join_tables.add(at)
 
+    # resolve joins in DECLARED order, pulling in any prerequisite table a needed
+    # join's left side references (e.g. dim_store ON fact_sales_lines.store_id
+    # requires fact_sales_lines to be joined first).
+    ordered = _resolve_join_order(measure, needed_join_tables)
     present_tables = {measure.table}
-    for jt in sorted(needed_join_tables):
-        j = _join_for_table(measure, jt)
-        if j is None:
-            raise CompileError(
-                "INTERNAL",
-                f"metric '{metric.key}' measure '{measure.name}' has no join to '{jt}'",
-                {"table": jt},
-            )
+    for j in ordered:
         select = _apply_join(select, measure.table, j)
-        present_tables.add(jt)
+        present_tables.add(j["table"])
 
     # WHERE: structured measure filters + value filters + row filters + time
     conditions: list[exp.Expression] = []
@@ -289,6 +315,21 @@ def _apply_join(select: exp.Select, left_table: str, j: dict) -> exp.Select:
     else:
         lt, lc = left_table, left_on
     on = exp.EQ(this=_column_ref(lt, lc), expression=_column_ref(jt, right_on))
+
+    distinct_key = j.get("distinct_key")
+    if distinct_key:
+        # join to a grain-collapsed subquery aliased as the physical table name,
+        # so downstream `<table>.<carry>` references still resolve. Prevents a
+        # one-to-many join (e.g. returns -> sales lines) from fanning the measure.
+        carry = j.get("carry") or []
+        sub = exp.Select().from_(jt)
+        projections = [exp.column(distinct_key, table=jt).as_(distinct_key)]
+        for c in carry:
+            projections.append(exp.func("ANY_VALUE", exp.column(c, table=jt)).as_(c))
+        sub = sub.select(*projections, append=False).group_by(exp.column(distinct_key, table=jt))
+        joined = sub.subquery(alias=jt)
+        return select.join(joined, on=on, join_type="LEFT")
+
     return select.join(jt, on=on, join_type="LEFT")
 
 

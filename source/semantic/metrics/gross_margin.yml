@@ -37,7 +37,7 @@ compute:
       agg: sum
       time_column: return_date
       joins:
-        - {table: fact_sales_lines, left_on: orig_basket_id, right_on: basket_id}
+        - {table: fact_sales_lines, distinct_key: basket_id, carry: [channel, store_id], left_on: orig_basket_id, right_on: basket_id}
         - {table: dim_store, left_on: fact_sales_lines.store_id, right_on: store_id}
-        - {table: dim_sku, left_on: sku_id, right_on: sku_id}
+        - {table: dim_sku, left_on: fact_returns.sku_id, right_on: sku_id}
   expr: "sales_net - sales_cost - returns_refund"

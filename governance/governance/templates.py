@@ -248,23 +248,23 @@ def _conversion_rate(group_cols, where, limit):
 
 
 def _inventory_days(group_cols, where, limit):
-    gsel = _select_prefix(group_cols)
-    where_clause = f"WHERE ({where})" if where else ""
-    # avg on-hand per store x sku across weekly snapshots (never summed), divided by
-    # average weekly units sold, x7. Grouping is not exposed for the demo.
+    where_clause = f"AND ({where})" if where else ""
+    # Days of cover: total units on hand at the LATEST weekly snapshot, divided by
+    # average DAILY units sold. Never sum on_hand across snapshot weeks (trap 5) —
+    # we take one snapshot date. Inventory and sales are at the same network grain.
     return f"""
-    WITH inv AS (
-      SELECT AVG(on_hand_qty) AS avg_on_hand
-      FROM fact_inventory
-      {where_clause}
+    WITH latest AS (SELECT MAX(snapshot_date) AS d FROM fact_inventory),
+    inv AS (
+      SELECT SUM(on_hand_qty) AS on_hand
+      FROM fact_inventory, latest
+      WHERE snapshot_date = latest.d {where_clause}
     ),
     sold AS (
       SELECT SUM(qty) AS units,
-             COUNT(DISTINCT date_trunc('week', ts)) AS weeks
+             GREATEST(date_diff('day', MIN(CAST(ts AS DATE)), MAX(CAST(ts AS DATE))), 1) AS days
       FROM fact_sales_lines
     )
-    SELECT 7.0 * inv.avg_on_hand
-             / NULLIF(sold.units / NULLIF(sold.weeks, 0), 0) AS inventory_days
+    SELECT inv.on_hand / NULLIF(sold.units / NULLIF(sold.days, 0), 0) AS inventory_days
     FROM inv, sold
     LIMIT {limit}
     """
