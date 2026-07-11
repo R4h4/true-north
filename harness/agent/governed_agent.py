@@ -25,16 +25,22 @@ def ask_user(question: str, options: list[str]) -> str:
     return ask_user_handler.get()(question, options)
 
 
-def build_agent() -> Agent:
+def build_agent(include_local_ask_user: bool = True) -> Agent:
     """Build a persona-agnostic agent. The persona token binds per turn via
     run_turn - never at build time, so a cached agent can't leak personas
-    across concurrent sessions."""
+    across concurrent sessions.
+
+    include_local_ask_user=False for the AG-UI server: there the frontend
+    registers ask_user as a CopilotKit action and the adapter proxies it to
+    the model, pausing in the browser instead of in Python.
+    """
     schema = kg_schema()
     if not schema.get("ok"):
         raise RuntimeError(f"tn kg schema failed at bootstrap: {schema.get('error')}")
+    tools = GOVERNED_TOOLS + ([ask_user] if include_local_ask_user else [])
     return Agent(
         model=build_model(),
-        tools=GOVERNED_TOOLS + [ask_user],
+        tools=tools,
         system_prompt=build_system_prompt(schema),
     )
 
