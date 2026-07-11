@@ -73,3 +73,19 @@ unchanged. env.py resolves the DSN through `governance.pg.resolve_dsn()` (honors
 An ORM (SQLModel/SQLAlchemy models) was deliberately **not** adopted: the runtime CLI
 stays psycopg-only. Revisit only when an API layer exists that would benefit from an ORM
 (Karsten's call).
+
+## Amendment (2026-07-11): policy staleness is detected and warned, never refused
+
+The runtime/authoring split (enforcement reads Postgres; `users.yaml` is authored truth)
+has a failure mode: edit the YAML — e.g. REVOKE a grant — forget `python -m governance.pg`,
+and the stale grant keeps being served silently. The loader now records
+`sha256(users.yaml)` in `policy_config` (key `users_yaml_sha256`); at runtime
+`load_policy_from_db()` compares it against the on-disk authored YAML and, on divergence,
+prints exactly one stderr warning naming the remedy. It **warns, never refuses** — a
+forgotten loader run must not take the CLI down on demo day — so the stdout envelope and
+exit code are byte-identical to the fresh case (nothing in `warnings[]`; contract-invisible).
+The check is advisory: it reads the hash on the connection `load_policy_from_db` already
+opens (no extra roundtrip), never raises (any failure is swallowed), and silently skips
+when the authored file is absent (a deployed runtime where the store IS the policy). The
+authored path is overridable via `TN_USERS_YAML`. No schema change — `policy_config` already
+exists (migration 0001); this is just a new row key.
