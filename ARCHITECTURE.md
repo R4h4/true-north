@@ -38,7 +38,9 @@ contracts/
 source/
   generator/              schema.py (single source of truth for tables/columns/vocabularies),
                           deterministic data generator (--scale, --seed)
-  semantic/               metrics/*.yml, dimensions/*.yml (see SCHEMA.md) — the governed layer
+  semantic/               metrics/*.yml, dimensions/*.yml, tables/*.yml (see SCHEMA.md) — the governed layer
+  semantic_layer/         the ONE typed loader for source/semantic/ (ADR 0009); governance
+                          and knowledge-graph both import it — no second parser
   query/                  read-only DuckDB engine
   data/TRAPS.md            the planted failure modes; features, not bugs
 governance/
@@ -60,14 +62,24 @@ plans/                    Phong's phase plans (reviewed via PR)
 - `source/generator/schema.py` is the **single shared truth** for physical tables, columns,
   and canonical vocabularies. The generator, the semantic layer, the validators, and the
   policy file all resolve against it; nothing redeclares columns.
-- `source/semantic/` is the second truth: the governed metric/dimension definitions.
-  The SQL compiler executes them; the KG compiler projects them into graph nodes;
-  `governance/fixtures/users.yaml` grants against the physical objects they reference.
-  Metric/dimension **denials are always derived** (policy × semantic layer), never authored.
+- `source/semantic/` is the second truth: the governed metric/dimension/table definitions.
+  It is parsed once, by `source/semantic_layer` — the **single typed loader** (ADR 0009);
+  governance and knowledge-graph both import it, so there is one model, no second parser and
+  no frozen snapshot. The SQL compiler executes the metrics; the KG compiler projects them
+  into graph nodes (table grain/freshness come from `source/semantic/tables/*.yml` via the
+  same loader); `governance/fixtures/users.yaml` grants against the physical objects they
+  reference. Metric/dimension **denials are always derived** (policy × semantic layer), never
+  authored.
 - `governance/` owns the `tn` entrypoint and the persona resolution; both surfaces
   (warehouse, graph) go through it so every answer carries the caller's permissions.
+  `governance/governance/policy.py` is the **one** implementation of the POLICY.md access
+  derivation: the KG surface does not re-derive access — `knowledge_graph/access.py` is a
+  thin adapter that projects `governance.policy` results into the graph's `_access`
+  annotations and CAN_READ/CAN_COMPUTE edges (ADR 0009).
 - `harness/` depends only on `CONTRACT.md` + the CLI. Nothing below the CLI is interface.
 - `tools/` depends on everything and is depended on by nothing (validators, e2e tests).
+- Package dependency direction (uv workspace): `knowledge-graph` → `governance` → `source`.
+  `source` is the lowest layer (schema + semantic model); it depends on nothing internal.
 
 ## State & storage
 
