@@ -8,7 +8,7 @@
   --ink-strong: #060a1f;
   --ink-secondary: #5b6172;
   --muted: #8b90a3;
-  --bg-app: #f7f8fc;
+  --bg-app: #eef0f6;
   --surface: #ffffff;
   --surface-subtle: #fafbfe;
   --border: #e8eaf2;
@@ -25,6 +25,7 @@
   --red-tint: #fdeef1;
   --amber: #b7791f;
   --shadow-card: 0 1px 2px rgba(6, 10, 31, 0.06);
+  --shadow-pane: 0 1px 2px rgba(6, 10, 31, 0.05), 0 6px 20px rgba(6, 10, 31, 0.06);
 }
 
 * {
@@ -115,10 +116,13 @@ body {
   box-shadow: var(--shadow-card);
 }
 
+/* Workspace: both panes float as rounded cards on the grey app canvas */
 .main {
   display: grid;
   grid-template-columns: 1fr minmax(280px, 420px);
   min-height: 0;
+  gap: 14px;
+  padding: 14px;
 }
 
 /* Narrow panes: stack the KG panel under the chat instead of crushing it */
@@ -127,10 +131,6 @@ body {
     grid-template-columns: 1fr;
     grid-template-rows: 1fr 320px;
     overflow-y: auto;
-  }
-  .chat-pane {
-    border-right: none;
-    border-bottom: 1px solid var(--border);
   }
 }
 
@@ -141,7 +141,9 @@ body {
      its content and the input scrolls off-page instead of messages scrolling */
   min-height: 0;
   overflow: hidden;
-  border-right: 1px solid var(--border);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-pane);
   background: var(--surface);
   display: flex;
   flex-direction: column;
@@ -410,6 +412,31 @@ body {
   font-size: 15px;
 }
 
+/* Send button: muted glyph while the field is empty, filled accent circle
+   the moment there is something to send (also styles the stop state mid-run) */
+.chat-pane .copilotKitInputControlButton {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  transition: background 150ms ease, color 150ms ease, transform 150ms ease;
+}
+
+.chat-pane .copilotKitInputControlButton:not(:disabled) {
+  background: var(--accent);
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.chat-pane .copilotKitInputControlButton:not(:disabled):hover {
+  background: var(--accent-dark);
+  transform: scale(1.05);
+}
+
 /* Hide CopilotKit branding: the dev-inspector floating button (custom element)
    and the chat footer (MIT-licensed, hiding is permitted) */
 cpk-web-inspector {
@@ -425,6 +452,10 @@ cpk-web-inspector {
   flex-direction: column;
   background: var(--surface-subtle);
   min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-pane);
 }
 
 /* In-chat collapsible reasoning ("Thoughts"), ChatGPT-style: a muted toggle
