@@ -1,0 +1,7 @@
+key: inventory_snapshot_grain
+statement: >-
+  fact_inventory is a weekly periodic snapshot — one row per store×sku per week. Never sum on_hand_qty across snapshot_dates; take the latest snapshot per store×sku (or a specific week) before summing, or the same physical stock is counted once per week.
+severity: critical
+constrains:
+  - metric:inventory_days
+  - table:fact_inventory

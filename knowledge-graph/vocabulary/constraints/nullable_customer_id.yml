@@ -1,0 +1,8 @@
+key: nullable_customer_id
+statement: >-
+  Walk-in retail lines often have NULL customer_id; B2B always has one. Denominator is customers with a first purchase, so NULL-customer lines are excluded — state this.
+severity: warning
+constrains:
+  - metric:repeat_purchase_rate_90d
+  - metric:member_active_rate_30d
+  - table:fact_sales_lines

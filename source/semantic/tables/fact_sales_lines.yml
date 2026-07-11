@@ -1,0 +1,4 @@
+key: fact_sales_lines
+description: One row per basket line; net_amount is booked (gross of returns).
+grain: sales line
+freshness_note: refreshed daily

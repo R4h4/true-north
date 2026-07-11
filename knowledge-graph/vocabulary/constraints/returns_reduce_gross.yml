@@ -1,0 +1,7 @@
+key: returns_reduce_gross
+statement: >-
+  Returns are booked in fact_returns, not fact_sales_lines; net revenue subtracts them. Return rates are high for PC Component, low for Accessory.
+severity: warning
+constrains:
+  - metric:net_revenue
+  - table:fact_returns

@@ -1,0 +1,7 @@
+key: gmv-gross
+name: GMV, gross
+definition: >-
+  Booked merchandise value before returns.
+aliases: [gross gmv, booked sales]
+variant_of: gmv-revenue
+measured_by: gmv_gross

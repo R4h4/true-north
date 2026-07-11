@@ -19,3 +19,4 @@ The immutable log of *why* true-north is built the way it is.
 - [0006](records/0006-sqlglot-compiler.md) — SQL compiler builds SQLGlot ASTs
 - [0007](records/0007-users-yaml-single-policy-source.md) — users.yaml is the single policy source; denials are derived
 - [0008](records/0008-two-owner-agent-dev-process.md) — Two-owner development with frontier agents; thin process, no heavy harness
+- [0009](records/0009-single-semantic-loader-seam.md) — One typed semantic loader in source; table semantics as YAML; KG tests on live; access single-sourced in governance.policy

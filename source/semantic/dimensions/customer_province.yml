@@ -1,0 +1,24 @@
+key: customer_province
+name: Customer province
+description: The loyalty member's registered province. Backed by dim_customer.province, which is PII-masked for some roles — grouping/filtering on it is denied for those roles.
+type: geo
+source: dim_customer.province
+canonical_values:
+  - Ha Noi
+  - Thai Nguyen
+  - Bac Ninh
+  - Da Nang
+  - Thanh Hoa
+  - Nghe An
+  - Thua Thien Hue
+  - Khanh Hoa
+  - Dak Lak
+  - Gia Lai
+  - Ho Chi Minh City
+  - Binh Duong
+  - Dong Nai
+  - Ba Ria - Vung Tau
+  - Long An
+  - Tien Giang
+  - Can Tho
+  - Tay Ninh

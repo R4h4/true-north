@@ -1,0 +1,9 @@
+key: b2b_value_skew
+statement: >-
+  B2B is a minority of baskets but the majority of value; state whether B2B is included.
+severity: warning
+constrains:
+  - metric:net_revenue
+  - metric:gmv_gross
+  - metric:basket_value_avg
+  - table:fact_sales_lines

@@ -1,0 +1,4 @@
+key: dim_promotion
+description: Promotions; mechanic and funder of each campaign.
+grain: promotion
+freshness_note: slowly changing dimension
