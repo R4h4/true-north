@@ -7,17 +7,19 @@ tests exercise the invariants without a running database.
 Node/edge property shapes match the replay-fixture instances exactly (CONTRACT §3/§4.1):
 - Concept:    {key, name, definition, aliases}
 - Metric:     {key, name, description, type, unit, formula, version}
-- Dimension:  {key, name, description, canonical_values}   (no `type` — see fixtures)
+- Dimension:  {key, name, description, canonical_values}   (no `type` yet — see change 5)
 - Table:      {key, description, grain, freshness_note}
 - Constraint: {key, statement, severity}
 - Role:       {key, description}
+
+The semantic layer arrives as the shared typed `SemanticLayer` (ADR 0009): metrics
+and dimensions are dataclasses, not dicts.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from knowledge_graph.loaders import measure_tables
 from knowledge_graph.table_semantics import TABLE_SEMANTICS
 
 
@@ -54,24 +56,24 @@ def _concept_props(c: dict) -> dict:
     }
 
 
-def _metric_props(m: dict) -> dict:
+def _metric_props(m) -> dict:
     return {
-        "key": m["key"],
-        "name": m["name"],
-        "description": (m.get("description") or "").strip(),
-        "type": m["type"],
-        "unit": m["unit"],
-        "formula": m.get("formula", ""),
-        "version": str(m.get("version", "")),
+        "key": m.key,
+        "name": m.name,
+        "description": (m.description or "").strip(),
+        "type": m.type,
+        "unit": m.unit,
+        "formula": m.formula or "",
+        "version": str(m.version or ""),
     }
 
 
-def _dimension_props(d: dict) -> dict:
+def _dimension_props(d) -> dict:
     return {
-        "key": d["key"],
-        "name": d["name"],
-        "description": (d.get("description") or "").strip(),
-        "canonical_values": list(d.get("canonical_values") or []),
+        "key": d.key,
+        "name": d.name,
+        "description": (d.description or "").strip(),
+        "canonical_values": list(d.canonical_values or []),
     }
 
 
@@ -99,13 +101,17 @@ def _role_props(role_key: str, role: dict) -> dict:
 
 # --- build ----------------------------------------------------------------
 
-def build_graph(vocabulary: dict, semantic: dict, policy: dict, schema, access_index) -> Graph:
-    """Assemble the full node/edge list. Deterministic: sorted iteration throughout."""
+def build_graph(vocabulary: dict, semantic, policy: dict, schema, access_index) -> Graph:
+    """Assemble the full node/edge list. Deterministic: sorted iteration throughout.
+
+    `semantic` is the shared typed SemanticLayer (ADR 0009); `.metrics`/`.dimensions`
+    are dicts of typed Metric/Dimension objects.
+    """
     g = Graph()
     concepts = vocabulary["concepts"]
     constraints = vocabulary["constraints"]
-    metrics = semantic["metrics"]
-    dimensions = semantic["dimensions"]
+    metrics = semantic.metrics
+    dimensions = semantic.dimensions
     all_tables = list(schema.TABLES.keys())
 
     # Only tables actually reachable (a COMPUTED_FROM target, a dimension source, or
@@ -144,16 +150,15 @@ def build_graph(vocabulary: dict, semantic: dict, policy: dict, schema, access_i
     # HAS_DIMENSION + COMPUTED_FROM from the semantic metrics.
     for key in sorted(metrics):
         m = metrics[key]
-        for dim in m.get("dimensions", []):
+        for dim in m.dimensions:
             g.edges.append(Edge("HAS_DIMENSION", "Metric", key, "Dimension", dim))
-        for table in measure_tables(m):
+        for table in m.tables:
             g.edges.append(Edge("COMPUTED_FROM", "Metric", key, "Table", table))
 
     # DEFINED_IN from each dimension's source table (skip virtual time dims: source null).
     for key in sorted(dimensions):
-        source = dimensions[key].get("source")
-        if source:
-            table = source.split(".", 1)[0]
+        table = dimensions[key].table
+        if table:
             g.edges.append(Edge("DEFINED_IN", "Dimension", key, "Table", table))
 
     # CONSTRAINS from constraint targets.
@@ -175,8 +180,11 @@ def build_graph(vocabulary: dict, semantic: dict, policy: dict, schema, access_i
 
 # --- invariants (CONTRACT §4.2) -------------------------------------------
 
-def assert_invariants(graph: Graph, semantic: dict) -> None:
-    """Raise AssertionError if any CONTRACT §4.2 invariant is violated."""
+def assert_invariants(graph: Graph, semantic) -> None:
+    """Raise AssertionError if any CONTRACT §4.2 invariant is violated.
+
+    `semantic` is the shared typed SemanticLayer (ADR 0009).
+    """
     concept_keys = {n.key for n in graph.nodes if n.label == "Concept"}
     metric_keys = {n.key for n in graph.nodes if n.label == "Metric"}
 
@@ -205,7 +213,7 @@ def assert_invariants(graph: Graph, semantic: dict) -> None:
             assert t in metric_keys, f"MEASURED_BY '{src}' -> unknown metric '{t}'"
 
     # Invariant 3: every Metric node key exists in the semantic layer (1:1).
-    sem_metric_keys = set(semantic["metrics"].keys())
+    sem_metric_keys = set(semantic.metrics.keys())
     assert metric_keys == sem_metric_keys, (
         f"invariant 3: Metric nodes {sorted(metric_keys)} != semantic metrics {sorted(sem_metric_keys)}"
     )
@@ -215,8 +223,8 @@ def assert_invariants(graph: Graph, semantic: dict) -> None:
     for e in graph.edges:
         if e.type == "HAS_DIMENSION":
             has_dim.setdefault(e.from_key, set()).add(e.to_key)
-    for key, m in semantic["metrics"].items():
-        want = set(m.get("dimensions", []))
+    for key, m in semantic.metrics.items():
+        want = set(m.dimensions)
         got = has_dim.get(key, set())
         assert got == want, (
             f"invariant 4: metric '{key}' HAS_DIMENSION {sorted(got)} != declared {sorted(want)}"

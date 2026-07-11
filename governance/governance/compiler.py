@@ -23,7 +23,7 @@ import sqlglot.expressions as exp
 
 from governance.filters import FilterClause, parse_filter, validate_value
 from governance.policy import Persona, RoleAccess
-from governance.semantic import Dimension, Measure, Metric, SemanticLayer
+from semantic_layer import Dimension, Measure, Metric, SemanticLayer
 from governance import templates as _templates
 from governance import tokenization as _tok
 

@@ -15,7 +15,7 @@ from governance import service
 from governance import tokenization as _tok
 from governance.compiler import CompileError, compile_query
 from governance.policy import load_policy
-from governance.semantic import load_semantic
+from semantic_layer import load_semantic
 
 SEM = load_semantic()
 POL = load_policy(semantic=SEM)

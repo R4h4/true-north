@@ -23,7 +23,7 @@ def test_invariants_hold(graph, semantic):
 
 def test_metric_nodes_match_semantic_layer(graph, semantic):
     # Invariant 3 / success criterion 4: Metric node keys == A's metric keys.
-    assert _labels(graph, "Metric") == set(semantic["metrics"].keys())
+    assert _labels(graph, "Metric") == set(semantic.metrics.keys())
 
 
 def test_three_parents_have_no_measured_by(graph):

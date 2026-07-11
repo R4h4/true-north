@@ -51,9 +51,21 @@ def test_province_dimension_readable_sources_store_not_customer(access_index):
 def test_dimension_denial_on_masked_source_column():
     # A dimension whose source IS a masked column is denied, reason names the column.
     from knowledge_graph.access import AccessIndex
+    from semantic_layer import Dimension, SemanticLayer
 
     policy = {"roles": {"r": {"tables": "all", "masked_columns": ["dim_customer.birth_year"]}}}
-    semantic = {"dimensions": {"age": {"key": "age", "source": "dim_customer.birth_year"}}, "metrics": {}}
+    semantic = SemanticLayer(
+        metrics={},
+        dimensions={
+            "age": Dimension(
+                key="age",
+                name="Age",
+                description="",
+                type="entity",
+                source="dim_customer.birth_year",
+            )
+        },
+    )
     acc = AccessIndex(policy, semantic).dimension_access("age", "r")
     assert acc["readable"] is False
     assert acc["reason"] == "uses masked column birth_year"

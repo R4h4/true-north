@@ -31,7 +31,7 @@ from pathlib import Path
 
 import yaml
 
-from governance.semantic import Metric, SemanticLayer, load_semantic, schema_module
+from semantic_layer import Metric, SemanticLayer, load_semantic, schema_module
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 USERS_YAML = REPO_ROOT / "governance" / "fixtures" / "users.yaml"

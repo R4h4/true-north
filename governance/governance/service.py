@@ -20,7 +20,7 @@ from governance import tokenization as _tok
 from governance.compiler import CompileError, CompiledQuery, compile_query
 from governance.filters import FilterError
 from governance.policy import Policy, RoleAccess, load_policy
-from governance.semantic import Metric, SemanticLayer, load_semantic, schema_module
+from semantic_layer import Metric, SemanticLayer, load_semantic, schema_module
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = REPO_ROOT / "source" / "data"

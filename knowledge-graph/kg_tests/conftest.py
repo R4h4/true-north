@@ -1,14 +1,14 @@
 """Shared fixtures for KG unit tests — no running Neo4j required.
 
-The graph is built from the authored vocabulary + a FROZEN SNAPSHOT of Agent A's
-semantic layer (tests/fixtures/semantic/, see SNAPSHOT.txt) so unit tests are stable
-regardless of A's live branch. Fake node/relationship/path objects duck-type the neo4j
-driver's graph types for serialization tests.
+The graph is built from the authored vocabulary + the LIVE semantic layer
+(source/semantic/) loaded through the shared typed loader (ADR 0009). There is no
+frozen snapshot: the KG tests exercise the same files the compiler ships, so a
+semantic-layer change that moves the counts is caught here by design. Fake
+node/relationship/path objects duck-type the neo4j driver's graph types for
+serialization tests.
 """
 
 from __future__ import annotations
-
-from pathlib import Path
 
 import pytest
 
@@ -23,7 +23,6 @@ from knowledge_graph.loaders import (
 )
 
 REPO_ROOT = config.REPO_ROOT
-SNAPSHOT_SEMANTIC = Path(__file__).parent / "fixtures" / "semantic"
 
 
 @pytest.fixture(scope="session")
@@ -32,8 +31,8 @@ def vocabulary() -> dict:
 
 
 @pytest.fixture(scope="session")
-def semantic() -> dict:
-    return load_semantic(SNAPSHOT_SEMANTIC)
+def semantic():
+    return load_semantic(config.SEMANTIC_DIR)
 
 
 @pytest.fixture(scope="session")

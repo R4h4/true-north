@@ -338,11 +338,21 @@ name = "true-north-governance"
 version = "0.1.0"
 source = { editable = "governance" }
 dependencies = [
+    { name = "duckdb" },
+    { name = "pyyaml" },
+    { name = "sqlglot" },
+    { name = "true-north-source" },
     { name = "typer" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "typer", specifier = ">=0.12" }]
+requires-dist = [
+    { name = "duckdb", specifier = ">=1.1" },
+    { name = "pyyaml", specifier = ">=6" },
+    { name = "sqlglot", specifier = ">=25" },
+    { name = "true-north-source", editable = "source" },
+    { name = "typer", specifier = ">=0.12" },
+]
 
 [[package]]
 name = "true-north-harness"
@@ -356,12 +366,16 @@ source = { editable = "knowledge-graph" }
 dependencies = [
     { name = "neo4j" },
     { name = "pyyaml" },
+    { name = "true-north-governance" },
+    { name = "true-north-source" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "neo4j", specifier = ">=5.20" },
     { name = "pyyaml", specifier = ">=6" },
+    { name = "true-north-governance", editable = "governance" },
+    { name = "true-north-source", editable = "source" },
 ]
 
 [[package]]

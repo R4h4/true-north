@@ -15,7 +15,27 @@ drift). Rules follow governance/POLICY.md exactly:
 
 from __future__ import annotations
 
-from knowledge_graph.loaders import measure_columns, measure_tables
+
+def _measure_columns(metric) -> set[str]:
+    """`table.column` refs inside every measure's expr/filters, qualified by the
+    measure's own table. Used for masked-column metric denial."""
+    import sqlglot
+    import sqlglot.expressions as exp
+
+    cols: set[str] = set()
+    for m in metric.measures:
+        if m.expr:
+            try:
+                tree = sqlglot.parse_one(m.expr, dialect="duckdb")
+                for c in tree.find_all(exp.Column):
+                    cols.add(c.name if "." in str(c) else f"{m.table}.{c.name}")
+            except Exception:
+                pass
+        for filt in m.filters:
+            column = filt.get("column") if isinstance(filt, dict) else None
+            if column:
+                cols.add(column if "." in column else f"{m.table}.{column}")
+    return cols
 
 
 class AccessIndex:
@@ -25,10 +45,10 @@ class AccessIndex:
     calls it with the calling role.
     """
 
-    def __init__(self, policy: dict, semantic: dict) -> None:
+    def __init__(self, policy: dict, semantic) -> None:
         self._roles = policy.get("roles", {})
-        self._metrics = semantic.get("metrics", {})
-        self._dimensions = semantic.get("dimensions", {})
+        self._metrics = semantic.metrics
+        self._dimensions = semantic.dimensions
 
     # --- role helpers -----------------------------------------------------
 
@@ -69,7 +89,7 @@ class AccessIndex:
         # Table-read denial takes precedence over masked-column denial.
         readable = self._readable_tables(role)
         if readable != "all":
-            for table in measure_tables(metric):
+            for table in metric.tables:
                 if table not in readable:
                     return {
                         "readable": False,
@@ -78,7 +98,7 @@ class AccessIndex:
 
         masked = self._masked_columns(role)
         if masked:
-            for column in sorted(measure_columns(metric)):
+            for column in sorted(_measure_columns(metric)):
                 if column in masked:
                     # reason names the bare column, matching the goldens
                     # ("uses masked column cost_amount").
@@ -90,7 +110,7 @@ class AccessIndex:
         dim = self._dimensions.get(dimension_key)
         if dim is None:
             return {"readable": False, "reason": f"dimension {dimension_key} is not defined"}
-        source = dim.get("source")
+        source = dim.source
         if source and source in self._masked_columns(role):
             bare = source.split(".", 1)[1]
             return {"readable": False, "reason": f"uses masked column {bare}"}

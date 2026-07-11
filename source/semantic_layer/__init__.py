@@ -1,27 +1,29 @@
-"""Load the semantic layer (source/semantic/*.yml) into typed objects.
+"""Typed loader for the semantic layer (source/semantic/*.yml).
 
-The YAML schema is source/semantic/SCHEMA.md (frozen). This module is the one
-place that parses it; the compiler, the policy derivation, and the catalog
-commands all consume these dataclasses rather than re-reading YAML.
+The YAML schema is source/semantic/SCHEMA.md (frozen). This module is the ONE
+place that parses it; the SQL compiler, the governance policy derivation, the
+catalog commands, and the knowledge-graph compiler all consume these dataclasses
+rather than re-reading YAML. One parser, one model (ADR 0009).
 
 Physical truth (tables/columns/vocabularies) is source/generator/schema.py; we
-load it via the same file-path loader tools/ uses, so there is a single source
-of truth for what columns exist.
+load it via a file-path loader so there is a single source of truth for what
+columns exist regardless of how the caller is on the path.
 """
 
 from __future__ import annotations
 
 import importlib.util
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
 import yaml
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-SEMANTIC_DIR = REPO_ROOT / "source" / "semantic"
-SCHEMA_PY = REPO_ROOT / "source" / "generator" / "schema.py"
+# source/semantic_layer/__init__.py -> the source package root is one parent up.
+SOURCE_ROOT = Path(__file__).resolve().parents[1]
+SEMANTIC_DIR = SOURCE_ROOT / "semantic"
+SCHEMA_PY = SOURCE_ROOT / "generator" / "schema.py"
 
 
 def _load_schema_module(schema_py: Path = SCHEMA_PY):
