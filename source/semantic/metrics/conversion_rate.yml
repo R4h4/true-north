@@ -1,0 +1,29 @@
+key: conversion_rate
+name: Conversion rate
+short_description: Transactions per store visitor
+description: >
+  Store conversion: completed baskets divided by footfall, from fact_traffic
+  (daily grain). A ratio in [0, 1] — the share of visitors who transacted.
+  fact_traffic carries transaction_count and footfall directly, so this is a
+  traffic-table metric, not a sales-line metric.
+concept: conversion-rate
+type: ratio
+unit: ratio
+version: "0.1"
+formula: "SUM(transaction_count) / SUM(footfall)"
+time_dimension: date
+dimensions: [region, province, store_format]
+compute:
+  measures:
+    transactions:
+      table: fact_traffic
+      expr: transaction_count
+      agg: sum
+      time_column: date
+    visitors:
+      table: fact_traffic
+      expr: footfall
+      agg: sum
+      time_column: date
+  expr: "transactions / visitors"
+  template: conversion_rate

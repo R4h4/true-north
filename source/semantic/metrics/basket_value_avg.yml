@@ -1,0 +1,36 @@
+key: basket_value_avg
+name: Average basket size (value)
+short_description: Mean net value per basket
+description: >
+  Mean net value per basket: total booked net_amount divided by the count of
+  distinct baskets. This is the value reading of "basket size". B2B baskets are a
+  few very large orders, so including B2B inflates the average sharply — state
+  whether B2B is included.
+concept: basket-value
+type: derived
+unit: VND
+version: "0.1"
+formula: "SUM(net_amount) / COUNT(DISTINCT basket_id)"
+time_dimension: date
+dimensions: [channel, region, province, category, subcategory, brand, store_format, tier, customer_type]
+compute:
+  measures:
+    value:
+      table: fact_sales_lines
+      expr: net_amount
+      agg: sum
+      time_column: ts
+      joins:
+        - {table: dim_store, left_on: store_id, right_on: store_id}
+        - {table: dim_sku, left_on: sku_id, right_on: sku_id}
+        - {table: dim_customer, left_on: customer_id, right_on: customer_id}
+    baskets:
+      table: fact_sales_lines
+      expr: basket_id
+      agg: count_distinct
+      time_column: ts
+      joins:
+        - {table: dim_store, left_on: store_id, right_on: store_id}
+        - {table: dim_sku, left_on: sku_id, right_on: sku_id}
+        - {table: dim_customer, left_on: customer_id, right_on: customer_id}
+  expr: "value / baskets"

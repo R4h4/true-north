@@ -1,0 +1,6 @@
+key: tier
+name: Loyalty tier
+description: Loyalty programme tier of the customer on the transaction.
+type: categorical
+source: dim_customer.tier
+canonical_values: [standard, silver, gold, platinum]

@@ -1,0 +1,6 @@
+key: store_format
+name: Store format
+description: Physical/logical format of the store the sale was booked in.
+type: categorical
+source: dim_store.format
+canonical_values: [flagship_showroom, showroom, online]
