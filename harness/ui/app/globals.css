@@ -84,6 +84,10 @@ body {
 
 .chat-pane {
   min-width: 0;
+  /* grid items default to min-height:auto - without this the pane grows with
+     its content and the input scrolls off-page instead of messages scrolling */
+  min-height: 0;
+  overflow: hidden;
   border-right: 1px solid #262a36;
   display: flex;
   flex-direction: column;
@@ -101,6 +105,12 @@ body {
 .chat-pane > div {
   flex: 1;
   min-height: 0;
+}
+
+/* CopilotChat must fill the pane so its internal message list scrolls and the
+   input stays pinned at the bottom */
+.chat-pane .copilotKitChat {
+  height: 100%;
 }
 
 .kg-pane {

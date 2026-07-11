@@ -15,6 +15,16 @@ function safeParse(s: string): any {
   }
 }
 
+// The CopilotKit dev inspector persists isOpen in localStorage - one stray
+// click and it overlays every page load after that. Force it closed before
+// CopilotKit mounts (module scope runs pre-render on the client).
+if (typeof window !== "undefined") {
+  const state = safeParse(localStorage.getItem("cpk:inspector:state") ?? "");
+  if (state?.isOpen) {
+    localStorage.setItem("cpk:inspector:state", JSON.stringify({ ...state, isOpen: false }));
+  }
+}
+
 const PERSONAS = [
   { id: "mai", label: "Mai · Executive" },
   { id: "duc", label: "Đức · RM South" },
