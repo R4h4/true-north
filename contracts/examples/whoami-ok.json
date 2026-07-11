@@ -1,0 +1,23 @@
+{
+  "request": {"argv": ["tn", "whoami", "--token", "tok-rm-south-duc"]},
+  "response": {
+    "contract_version": "0.3",
+    "ok": true,
+    "user": {"id": "u_duc", "role": "regional_manager"},
+    "result": {
+      "user": {"id": "u_duc", "name": "Đức", "role": "regional_manager"},
+      "readable_tables": ["dim_customer", "dim_promotion", "dim_sku", "dim_store", "fact_inventory", "fact_returns", "fact_sales_lines", "fact_traffic"],
+      "denied_metrics": [],
+      "permissions": [
+        {"type": "row_filter", "table": "dim_store", "column": "region", "operator": "=", "value": "South", "display": "dim_store.region = 'South'"},
+        {"type": "column_masked", "column": "dim_customer.province", "display": "dim_customer.province is masked"},
+        {"type": "column_masked", "column": "dim_customer.birth_year", "display": "dim_customer.birth_year is masked"},
+        {"type": "column_tokenized", "column": "fact_sales_lines.customer_id", "display": "customer ids are stable tokens"},
+        {"type": "column_tokenized", "column": "dim_customer.customer_id", "display": "customer ids are stable tokens"}
+      ]
+    },
+    "metadata": {},
+    "warnings": [],
+    "error": null
+  }
+}

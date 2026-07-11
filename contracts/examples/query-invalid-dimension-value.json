@@ -1,0 +1,16 @@
+{
+  "request": {"argv": ["tn", "query", "--token", "tok-exec-mai", "--metric", "net_revenue", "--filter", "channel = 'offline'"]},
+  "response": {
+    "contract_version": "0.3",
+    "ok": false,
+    "user": {"id": "u_mai", "role": "executive"},
+    "result": null,
+    "metadata": {},
+    "warnings": [],
+    "error": {
+      "code": "INVALID_DIMENSION_VALUE",
+      "message": "'offline' is not a canonical value of dimension 'channel'",
+      "details": {"did_you_mean": "in_store", "canonical_values": ["app", "b2b", "in_store", "web"]}
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "request": {"argv": ["tn", "query", "--token", "tok-mkt-lan", "--metric", "gross_margin", "--group-by", "category"]},
+  "response": {
+    "contract_version": "0.3",
+    "ok": false,
+    "user": {"id": "u_lan", "role": "marketing_ops"},
+    "result": null,
+    "metadata": {},
+    "warnings": [],
+    "error": {
+      "code": "ACCESS_DENIED_METRIC",
+      "message": "role marketing_ops cannot compute gross_margin",
+      "details": {"reason": "uses masked column cost_amount"}
+    }
+  }
+}

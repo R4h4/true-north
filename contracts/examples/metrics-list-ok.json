@@ -1,0 +1,19 @@
+{
+  "request": {"argv": ["tn", "metrics", "list", "--token", "tok-mkt-lan"]},
+  "response": {
+    "contract_version": "0.3",
+    "ok": true,
+    "user": {"id": "u_lan", "role": "marketing_ops"},
+    "result": {
+      "metrics": [
+        {"key": "net_revenue", "name": "Net revenue", "short_description": "Sales net of returns", "type": "derived", "unit": "VND", "access": {"allowed": true, "reason": null}},
+        {"key": "gmv_gross", "name": "GMV (gross)", "short_description": "Gross merchandise value before returns", "type": "sum", "unit": "VND", "access": {"allowed": true, "reason": null}},
+        {"key": "gross_margin", "name": "Gross margin", "short_description": "Net revenue minus cost of goods", "type": "derived", "unit": "VND", "access": {"allowed": false, "reason": "uses masked column cost_amount"}},
+        {"key": "inventory_days", "name": "Inventory days", "short_description": "Days of stock on hand", "type": "derived", "unit": "count", "access": {"allowed": false, "reason": "uses table fact_inventory, not readable for role marketing_ops"}}
+      ]
+    },
+    "metadata": {},
+    "warnings": [],
+    "error": null
+  }
+}

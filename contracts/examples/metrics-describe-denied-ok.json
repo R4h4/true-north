@@ -1,0 +1,30 @@
+{
+  "request": {"argv": ["tn", "metrics", "describe", "gross_margin", "--token", "tok-mkt-lan"]},
+  "response": {
+    "contract_version": "0.3",
+    "ok": true,
+    "user": {"id": "u_lan", "role": "marketing_ops"},
+    "result": {
+      "key": "gross_margin",
+      "name": "Gross margin",
+      "description": "Net revenue minus cost of goods sold, before operating costs.",
+      "type": "derived",
+      "unit": "VND",
+      "formula": "sum(net_amount) - sum(cost_amount), net of returns",
+      "tables": ["fact_sales_lines", "fact_returns"],
+      "dimensions": [
+        {"key": "channel", "name": "Sales channel", "type": "categorical", "description": "in_store | web | app | b2b"},
+        {"key": "category", "name": "Product category", "type": "categorical", "description": "Top-level product category"},
+        {"key": "order_date", "name": "Order date", "type": "time", "description": "Basket timestamp, business-local"}
+      ],
+      "constraints": [
+        {"key": "b2b_value_skew", "statement": "B2B is a minority of baskets but the majority of value; state whether B2B is included."}
+      ],
+      "concept": {"key": "profitability", "name": "Profitability"},
+      "access": {"allowed": false, "reason": "uses masked column cost_amount"}
+    },
+    "metadata": {},
+    "warnings": [],
+    "error": null
+  }
+}
