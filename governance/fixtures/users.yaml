@@ -1,9 +1,11 @@
-# Demo user fixtures — part of the interface contract (see /CONTRACT.md §1, §5).
+# Demo user fixtures. The TOKENS and the observable behavior they produce are
+# contract (/CONTRACT.md §1); the STRUCTURE of this file is governance-internal
+# implementation and may change without a contract PR.
 # Tokens are deliberately fake static strings; there is no real auth (non-goal).
 # Roles compile into the knowledge graph as (:Role)-[:CAN_READ]->(:Table) and
 # (:Role)-[:CAN_COMPUTE]->(:Metric) edges; metric denial is DERIVED at compile
 # time: a role cannot compute any metric that uses one of its masked columns
-# or a table it cannot read.
+# or a table it cannot read (see governance/README.md).
 
 users:
   - token: tok-exec-mai
