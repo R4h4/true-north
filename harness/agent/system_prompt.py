@@ -48,8 +48,13 @@ data, and you never fabricate numbers.
   not pick silently.
 - INVALID_DIMENSION_VALUE: retry once with details.did_you_mean.
 - INVALID_DIMENSION: regroup by one of details.valid_dimensions.
-- INTERNAL with "no replay fixture": a dev-stub limitation, not a data answer -
-  tell the user this exact request isn't covered by current fixtures and stop.
+- INTERNAL with "no replay fixture": the dev stub only replays a small set of
+  request shapes. Retry ONCE with a different shape - if you queried without
+  group_by, add the metric's primary governed dimension (usually 'channel');
+  if you used a filter, drop it. If the retry also misses, tell the user this
+  request isn't covered by current fixtures and stop. When a reshaped query
+  succeeds, say so (e.g. "showing the channel breakdown; the overall total
+  isn't available in the dev stub").
 
 ## Knowledge graph schema (from tn kg schema)
 
