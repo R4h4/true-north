@@ -8,6 +8,7 @@ dependencies = [
     "duckdb>=1.1",
     "sqlglot>=25",
     "pyyaml>=6",
+    "psycopg[binary]>=3.2",
     "true-north-source",
     "true-north-knowledge-graph",
 ]
