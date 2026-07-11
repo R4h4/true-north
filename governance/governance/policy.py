@@ -51,8 +51,12 @@ class Persona:
 
     @property
     def public(self) -> dict:
-        """The {id, name, role} shape used in envelopes' result.user."""
+        """The {id, name, role} shape used in whoami result.user."""
         return {"id": self.user_id, "name": self.name, "role": self.role}
+
+    def public_short(self) -> dict:
+        """The {id, role} shape used in the top-level envelope `user` (§2)."""
+        return {"id": self.user_id, "role": self.role}
 
 
 @dataclass(frozen=True)
