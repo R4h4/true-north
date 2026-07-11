@@ -1,0 +1,35 @@
+key: fpd_rate
+name: First-payment default rate
+short_description: Share of a disbursement vintage that defaults within its first two snapshots.
+description: >
+  Share of loans in a DISBURSEMENT-MONTH cohort (vintage_month) whose first snapshot
+  shows dpd >= 30 within 2 snapshot months of disbursement. VINTAGE metric — bind to
+  vintage_month, never aggregate by calendar observation month: doing so blends a bad
+  vintage cohort into the surrounding calendar month's larger, more seasoned loan
+  population and hides it. Only vintage_month grouping surfaces cohort-level quality
+  problems (e.g. a single bad origination month).
+concept: fpd-rate
+type: ratio
+unit: ratio
+version: "0.1"
+formula: "COUNT(loans with dpd>=30 within 2 snapshot months of disbursement) / COUNT(loans in vintage)"
+time_dimension: vintage_month
+dimensions: [product, channel]
+compute:
+  measures:
+    fpd_loans:
+      table: fact_loan_snapshots
+      expr: loan_id
+      agg: count_distinct
+      time_column: snapshot_month
+      filters:
+        - {column: dpd, operator: ">=", value: 30}
+      joins:
+        - {table: fact_disbursements, left_on: loan_id, right_on: loan_id}
+    vintage_loans:
+      table: fact_disbursements
+      expr: loan_id
+      agg: count
+      time_column: disbursed_date
+  expr: "fpd_loans / vintage_loans"
+  template: fpd_rate

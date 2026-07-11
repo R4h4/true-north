@@ -1,0 +1,20 @@
+key: province
+name: Customer province
+description: >-
+  Customer's canonical province name (stored one canonical way only, e.g.
+  "Ho Chi Minh City", never "HCMC"/"Saigon"; "Ha Noi", never "HN").
+type: geo
+source: dim_customer.province
+canonical_values:
+  - Ho Chi Minh City
+  - Ha Noi
+  - Da Nang
+  - Binh Duong
+  - Dong Nai
+  - Can Tho
+  - Hai Phong
+  - Khanh Hoa
+  - Long An
+  - Thanh Hoa
+  - Nghe An
+  - Bac Ninh

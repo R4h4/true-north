@@ -1,0 +1,8 @@
+key: enr
+name: ENR / outstanding balance
+definition: >-
+  Earning net receivables — total outstanding principal across active loans at a
+  snapshot month. The portfolio-size headline number; non-additive across months.
+aliases: [portfolio size, book size, outstanding balance, receivables]
+variant_of: null
+measured_by: enr

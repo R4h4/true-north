@@ -1,0 +1,16 @@
+{
+  "request": {"argv": ["tn", "--dataset", "nope", "whoami", "--token", "tok-analyst-binh"]},
+  "response": {
+    "contract_version": "0.3",
+    "ok": false,
+    "user": null,
+    "result": null,
+    "metadata": {},
+    "warnings": [],
+    "error": {
+      "code": "UNKNOWN_DATASET",
+      "message": "unknown dataset 'nope'; valid datasets: retail, shinhan",
+      "details": null
+    }
+  }
+}

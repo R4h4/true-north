@@ -1,0 +1,6 @@
+key: segment
+name: Customer segment
+description: Customer segment.
+type: categorical
+source: dim_customer.segment
+canonical_values: [mass, emerging_affluent]

@@ -1,0 +1,8 @@
+key: fact_collections
+description: >-
+  One row per loan per collections month. bucket_at_due is the DPD bucket at the START of
+  the month, which differs from fact_loan_snapshots' month-end dpd_bucket for the same
+  month — a loan can migrate buckets mid-month. Do not join the two on bucket_at_due
+  vs dpd_bucket as if they were the same value.
+grain: loan × month (collections)
+freshness_note: refreshed daily during the month, finalized ~3 business days after month-end

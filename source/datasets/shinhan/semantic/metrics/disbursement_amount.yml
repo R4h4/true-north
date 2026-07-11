@@ -1,0 +1,26 @@
+key: disbursement_amount
+name: Disbursement amount
+short_description: Total principal disbursed.
+description: >
+  SUM of principal across fact_disbursements. Raw VND (full đồng, int64) — management
+  speaks in tỷ (billions); divide by 1e9 when narrating a large aggregate figure.
+concept: disbursement-amount
+type: sum
+unit: VND
+version: "0.1"
+formula: "SUM(principal)"
+time_dimension: month
+dimensions: [product, channel, partner, province]
+compute:
+  measures:
+    principal_sum:
+      table: fact_disbursements
+      expr: principal
+      agg: sum
+      time_column: disbursed_date
+      joins:
+        - {table: dim_customer, left_on: customer_id, right_on: customer_id}
+        - {table: dim_partner, left_on: partner_id, right_on: partner_id}
+        - {table: dim_product, left_on: product_key, right_on: product_key}
+        - {table: dim_channel, left_on: channel, right_on: channel_key}
+  expr: "principal_sum"

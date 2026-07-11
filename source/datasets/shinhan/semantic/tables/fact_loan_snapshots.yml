@@ -1,0 +1,8 @@
+key: fact_loan_snapshots
+description: >-
+  Month-end snapshot per loan; never sum outstanding_principal or count loan_id across
+  snapshot months. Written-off loans stop appearing in the month after write-off — they
+  are absent, not zeroed, so a naive "current NPL" query run after a write-off wave will
+  show an improved ratio with no underlying quality change.
+grain: loan × month (snapshot)
+freshness_note: month-end snapshot; latest month closes ~3 business days after month-end

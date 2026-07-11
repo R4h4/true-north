@@ -1,0 +1,11 @@
+key: fpd_vintage_only
+statement: >-
+  fpd_rate is a VINTAGE metric bound to vintage_month (disbursement month), not a
+  calendar-observation metric. Aggregating first-payment default by the calendar month
+  it was OBSERVED (rather than the month the loan was DISBURSED) blends a bad
+  origination cohort (planted: 2025-01/02 telesales vintage, ~2x FPD) into a larger,
+  more seasoned population and hides it.
+severity: critical
+constrains:
+  - metric:fpd_rate
+  - dimension:vintage_month

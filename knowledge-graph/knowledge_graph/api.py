@@ -17,6 +17,7 @@ Raises knowledge_graph.errors.QueryRejected (-> QUERY_REJECTED) and InvalidQuery
 from __future__ import annotations
 
 from governance.policy import load_policy as load_governance_policy
+from semantic_layer.datasets import Dataset, get_dataset
 
 from knowledge_graph import config
 from knowledge_graph.access import AccessIndex
@@ -32,16 +33,17 @@ def get_schema() -> dict:
     return schema_result()
 
 
-def _access_index() -> AccessIndex:
-    semantic = load_semantic(config.SEMANTIC_DIR)
-    policy = load_governance_policy(config.USERS_YAML, semantic=semantic)
+def _access_index(dataset: Dataset | None = None) -> AccessIndex:
+    ds = dataset or get_dataset()
+    semantic = load_semantic(ds.semantic_dir)
+    policy = load_governance_policy(ds.users_yaml, semantic=semantic, dataset=ds.key)
     return AccessIndex(policy)
 
 
-def _driver():
+def _driver(dataset: Dataset | None = None):
     from neo4j import GraphDatabase
 
-    return GraphDatabase.driver(config.bolt_uri(), auth=config.bolt_auth())
+    return GraphDatabase.driver(config.bolt_uri(dataset), auth=config.bolt_auth())
 
 
 def _graph_compiled_at(session) -> str | None:
@@ -51,14 +53,14 @@ def _graph_compiled_at(session) -> str | None:
     return rec["ts"] if rec else None
 
 
-def compiled_at() -> str | None:
+def compiled_at(dataset: Dataset | None = None) -> str | None:
     """Best-effort compile stamp for surfaces that don't run a query (kg schema).
 
     Returns None when the graph is unreachable rather than raising — the schema
     payload itself is static and must not require a live DB.
     """
     try:
-        driver = _driver()
+        driver = _driver(dataset)
         try:
             with driver.session() as session:
                 return _graph_compiled_at(session)
@@ -68,7 +70,11 @@ def compiled_at() -> str | None:
         return None
 
 
-def run_cypher(cypher: str, role: str, *, access_index: AccessIndex | None = None) -> dict:
+def run_cypher(
+    cypher: str, role: str, *,
+    access_index: AccessIndex | None = None,
+    dataset: Dataset | None = None,
+) -> dict:
     """Execute read-only Cypher for `role`, returning serialized records + the compile stamp.
 
     - Rejects writes/multi-statement via the pre-check (QueryRejected).
@@ -76,13 +82,13 @@ def run_cypher(cypher: str, role: str, *, access_index: AccessIndex | None = Non
     - Serializes recursively with per-role `_access` on Metric/Table/Dimension nodes.
     """
     check_read_only(cypher)
-    access = access_index or _access_index()
+    access = access_index or _access_index(dataset)
     serializer = Serializer(access, role)
 
     from neo4j import READ_ACCESS
     from neo4j.exceptions import CypherSyntaxError
 
-    driver = _driver()
+    driver = _driver(dataset)
     try:
         with driver.session(default_access_mode=READ_ACCESS) as session:
             compiled_at = _graph_compiled_at(session)

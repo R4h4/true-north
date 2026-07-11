@@ -384,10 +384,19 @@ class Policy:
 def load_policy(
     users_yaml: Path = USERS_YAML,
     semantic: SemanticLayer | None = None,
+    dataset: str | None = None,
 ) -> Policy:
+    # The table universe (_all_tables, used to validate table grants) must come
+    # from the DATASET's schema.py, not the retail default — otherwise a Policy
+    # built for a non-retail dataset validates grants against the wrong tables.
+    # Both the semantic layer and schema.py resolve through the registry (retail
+    # default); an explicit `semantic` still wins for callers that pass it.
+    from semantic_layer.datasets import get_dataset
+
+    ds = get_dataset(dataset)
     doc = yaml.safe_load(Path(users_yaml).read_text())
-    semantic = semantic or load_semantic()
-    schema = schema_module()
+    semantic = semantic or load_semantic(ds.semantic_dir)
+    schema = schema_module(ds.schema_py)
     all_tables = frozenset(schema.TABLES.keys())
 
     personas: dict[str, Persona] = {}

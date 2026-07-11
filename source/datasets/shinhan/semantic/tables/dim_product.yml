@@ -1,0 +1,4 @@
+key: dim_product
+description: The four lending products (cash loan, consumer-durable installment, two-wheeler loan, credit-card-linked installment).
+grain: product
+freshness_note: static reference table

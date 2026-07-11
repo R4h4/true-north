@@ -1,0 +1,10 @@
+key: first-payment-default
+name: First-payment default
+definition: >-
+  Share of a disbursement vintage that defaults (30+ DPD) within its first two snapshot
+  months — an origination/underwriting quality signal, not a portfolio-quality-at-a-point-
+  in-time signal. Vintage-only: aggregating by calendar month hides a bad origination
+  cohort inside a larger, more seasoned population.
+aliases: [fpd, early default, origination quality]
+variant_of: portfolio-delinquency
+measured_by: fpd_rate

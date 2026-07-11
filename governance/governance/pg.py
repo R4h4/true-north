@@ -29,6 +29,7 @@ from psycopg.types.json import Jsonb
 
 from governance.policy import Persona, Policy
 from semantic_layer import load_semantic, schema_module
+from semantic_layer.datasets import get_dataset
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 USERS_YAML = REPO_ROOT / "governance" / "fixtures" / "users.yaml"
@@ -42,6 +43,11 @@ _YAML_HASH_KEY = "users_yaml_sha256"
 
 def resolve_dsn(dsn: str | None = None) -> str:
     return dsn or os.environ.get("TN_PG_DSN") or DEFAULT_DSN
+
+
+def _pg_schema(dataset: str | None = None) -> str:
+    """Postgres schema for a dataset (retail -> 'public'). Pure registry lookup."""
+    return get_dataset(dataset).pg_schema
 
 
 def authored_users_yaml() -> Path:
@@ -66,11 +72,17 @@ def authored_users_yaml() -> Path:
 _ALEMBIC_INI = REPO_ROOT / "governance" / "alembic.ini"
 
 
-def _connect(dsn: str | None = None) -> psycopg.Connection:
-    return psycopg.connect(resolve_dsn(dsn))
+def _connect(dsn: str | None = None, schema: str = "public") -> psycopg.Connection:
+    """Connect and, for a non-public schema, pin search_path so unqualified DDL
+    and DML land in the dataset's schema. retail ('public') is left exactly as
+    today — no search_path munging — so nothing about its behavior changes."""
+    conn = psycopg.connect(resolve_dsn(dsn))
+    if schema != "public":
+        conn.execute(f'SET search_path TO "{schema}"')
+    return conn
 
 
-def migrate(dsn: str | None = None) -> None:
+def migrate(dsn: str | None = None, dataset: str | None = None) -> None:
     """Run `alembic upgrade head` programmatically (deploy-time only).
 
     Alembic (and its SQLAlchemy dependency) is imported HERE, inside the loader
@@ -78,24 +90,53 @@ def migrate(dsn: str | None = None) -> None:
     must not pull SQLAlchemy onto the per-invocation hot path. env.py resolves the
     DSN via resolve_dsn(), so TN_PG_DSN is honored; the override below only matters
     when a caller passes an explicit dsn.
+
+    For a non-default dataset the schema is created if absent and the SAME
+    migration chain runs into it: env.py reads TN_PG_SCHEMA to set
+    version_table_schema and the connection search_path, so the plain DDL and the
+    alembic_version bookkeeping both land in the dataset's schema. retail
+    ('public') passes no schema override, leaving the existing public tables and
+    alembic_version untouched.
     """
     from alembic import command
     from alembic.config import Config
 
+    schema = _pg_schema(dataset)
+    if schema != "public":
+        with psycopg.connect(resolve_dsn(dsn)) as conn:
+            conn.execute(f'CREATE SCHEMA IF NOT EXISTS "{schema}"')
+            conn.commit()
+
     cfg = Config(str(_ALEMBIC_INI))
     if dsn is not None:
         cfg.set_main_option("sqlalchemy.url", resolve_dsn(dsn))
-    command.upgrade(cfg, "head")
+
+    prev = os.environ.get("TN_PG_SCHEMA")
+    if schema != "public":
+        os.environ["TN_PG_SCHEMA"] = schema
+    else:
+        os.environ.pop("TN_PG_SCHEMA", None)
+    try:
+        command.upgrade(cfg, "head")
+    finally:
+        if prev is not None:
+            os.environ["TN_PG_SCHEMA"] = prev
+        else:
+            os.environ.pop("TN_PG_SCHEMA", None)
 
 
 # --- deploy-time loader: YAML -> Postgres -----------------------------------
 
 
-def load_policy_to_db(dsn: str | None = None, users_yaml: Path = USERS_YAML) -> None:
-    """Idempotently hydrate Postgres from the authored users.yaml.
+def load_policy_to_db(
+    dsn: str | None = None, users_yaml: Path = USERS_YAML, dataset: str | None = None
+) -> None:
+    """Idempotently hydrate a dataset's Postgres schema from the authored users.yaml.
 
     Upserts roles/users/config and prunes any rows no longer authored, so
-    running it twice (or after an edit) converges the store to the YAML.
+    running it twice (or after an edit) converges the store to the YAML. All
+    writes are scoped to the dataset's schema (retail -> public); a non-default
+    dataset's load never touches public.
     """
     yaml_bytes = Path(users_yaml).read_bytes()
     doc = yaml.safe_load(yaml_bytes)
@@ -104,9 +145,10 @@ def load_policy_to_db(dsn: str | None = None, users_yaml: Path = USERS_YAML) -> 
     tokenization = doc.get("tokenization") or {}
     yaml_sha256 = hashlib.sha256(yaml_bytes).hexdigest()
 
-    migrate(dsn)
+    schema = _pg_schema(dataset)
+    migrate(dsn, dataset)
 
-    with _connect(dsn) as conn:
+    with _connect(dsn, schema) as conn:
         # roles first (users FK-reference them)
         for role, rdef in roles.items():
             conn.execute(
@@ -170,42 +212,62 @@ def load_policy_to_db(dsn: str | None = None, users_yaml: Path = USERS_YAML) -> 
 # --- runtime: Postgres -> Policy --------------------------------------------
 
 
-def _warn_if_stale(stored_yaml_sha256: str | None) -> None:
+def _warn_if_stale(
+    stored_yaml_sha256: str | None,
+    authored_yaml: Path,
+    dataset_key: str = "retail",
+) -> None:
     """Warn ONCE on stderr if the authored users.yaml has changed since the last
-    load. Advisory only: never raises, never touches stdout or the exit code, and
+    load. Compares against THIS dataset's authored file (retail's users.yaml is
+    not the shinhan bundle's — comparing across datasets would misfire on every
+    call). Advisory only: never raises, never touches stdout or the exit code, and
     stays silent when there is nothing to compare (no stored hash, or no authored
     file on disk — the deployed-runtime case where the store IS the policy)."""
     try:
         if not stored_yaml_sha256:
             return
-        yaml_path = authored_users_yaml()
-        if not yaml_path.exists():
+        if not authored_yaml.exists():
             return
-        current = hashlib.sha256(yaml_path.read_bytes()).hexdigest()
+        current = hashlib.sha256(authored_yaml.read_bytes()).hexdigest()
         if current == stored_yaml_sha256:
             return
+        remedy = "uv run python -m governance.pg"
+        if dataset_key != "retail":
+            remedy += f" --dataset {dataset_key}"
         print(
             "tn: warning: runtime policy store is stale — authored users.yaml has "
-            "changed since the last load; run: uv run python -m governance.pg",
+            f"changed since the last load; run: {remedy}",
             file=sys.stderr,
         )
     except Exception:  # noqa: BLE001 — staleness detection is advisory, never a gate
         pass
 
 
-def load_policy_from_db(dsn: str | None = None, semantic=None) -> Policy:
+def load_policy_from_db(dsn: str | None = None, semantic=None, dataset: str | None = None) -> Policy:
     """Reconstruct the same Policy object load_policy() builds, from Postgres.
 
     Personas, role dicts (definition JSONB verbatim), and the tokenization
-    config all come from the store; the semantic layer is loaded from disk (a
-    build artifact, not authored policy). Kept byte-parity with the YAML-side
-    Policy so the parity test passes and downstream governance is identical.
+    config all come from the dataset's schema (retail -> public); the semantic
+    layer is loaded from disk (a build artifact, not authored policy). Kept
+    byte-parity with the YAML-side Policy so the parity test passes and
+    downstream governance is identical.
     """
-    semantic = semantic or load_semantic()
-    schema = schema_module()
-    all_tables = frozenset(schema.TABLES.keys())
+    ds = get_dataset(dataset)
+    # The registry is pure path math (ADR 0011): a dataset's on-disk bundle may
+    # not exist yet (content lands on a parallel branch). The runtime policy —
+    # personas, roles, tokenization — comes wholly from Postgres; the semantic
+    # layer and schema.py are build artifacts on disk. When they are absent we
+    # reconstruct with an empty semantic/table set rather than tracebacking:
+    # policy identity is faithful, and readable-table resolution is empty until
+    # the bundle is provisioned (the honest answer for an unprovisioned dataset).
+    if semantic is None:
+        semantic = load_semantic(ds.semantic_dir)  # empty if the dir is absent
+    if ds.schema_py.exists():
+        all_tables = frozenset(schema_module(ds.schema_py).TABLES.keys())
+    else:
+        all_tables = frozenset()
 
-    with _connect(dsn) as conn:
+    with _connect(dsn, ds.pg_schema) as conn:
         role_rows = conn.execute("SELECT role, definition FROM roles").fetchall()
         roles = {role: definition for role, definition in role_rows}
 
@@ -232,7 +294,11 @@ def load_policy_from_db(dsn: str | None = None, semantic=None) -> Policy:
         tokenization = cfg_rows.get("tokenization") or {}
         stored_yaml_sha256 = cfg_rows.get(_YAML_HASH_KEY)
 
-    _warn_if_stale(stored_yaml_sha256)
+    # Compare against THIS dataset's authored file: retail honors TN_USERS_YAML
+    # (deployed-runtime override); a non-default dataset uses its own bundle's
+    # users.yaml so the staleness check doesn't misfire against retail's.
+    authored = authored_users_yaml() if ds.key == "retail" else ds.users_yaml
+    _warn_if_stale(stored_yaml_sha256, authored, ds.key)
 
     return Policy(
         personas=personas,
@@ -258,9 +324,11 @@ def write_audit(
     error_code: str | None,
     contract_version: str | None,
     dsn: str | None = None,
+    dataset: str | None = None,
 ) -> None:
-    """Write exactly one audit_log row. Caller wraps this fail-open."""
-    with _connect(dsn) as conn:
+    """Write exactly one audit_log row into the dataset's schema. Caller wraps
+    this fail-open."""
+    with _connect(dsn, _pg_schema(dataset)) as conn:
         conn.execute(
             """
             INSERT INTO audit_log
@@ -283,11 +351,26 @@ def write_audit(
         conn.commit()
 
 
-def _main() -> None:
-    # Honor TN_USERS_YAML here too: the loader must hash the same authored file
-    # the runtime staleness check compares against, or the warning misfires.
-    load_policy_to_db(users_yaml=authored_users_yaml())
-    print(f"policy loaded into {resolve_dsn()}")
+def _main(argv: list[str] | None = None) -> None:
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Hydrate the runtime policy store from users.yaml (ADR 0010/0011)."
+    )
+    parser.add_argument(
+        "--dataset",
+        default=None,
+        help="dataset key (default: TN_DATASET env or 'retail'); loads that "
+        "dataset's users.yaml into that dataset's Postgres schema",
+    )
+    args = parser.parse_args(argv)
+    ds = get_dataset(args.dataset)
+
+    # Honor TN_USERS_YAML for retail (the deployed-runtime staleness check compares
+    # against it); a non-default dataset uses its own bundle's users.yaml.
+    users_yaml = authored_users_yaml() if ds.key == "retail" else ds.users_yaml
+    load_policy_to_db(users_yaml=users_yaml, dataset=ds.key)
+    print(f"policy loaded into {resolve_dsn()} (schema {ds.pg_schema})")
 
 
 if __name__ == "__main__":

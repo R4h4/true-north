@@ -1,0 +1,11 @@
+key: vintage_month
+name: Disbursement vintage month
+description: >-
+  The calendar month a loan was DISBURSED (fact_disbursements.disbursed_date, truncated
+  to month) — a cohort/vintage dimension, distinct from the 'month' dimension used for
+  calendar-month observation metrics (snapshots, collections). fpd_rate is defined ONLY
+  on this dimension: aggregating first-payment default by observation month instead of
+  vintage month hides bad-vintage cohorts inside a mix of older, seasoned loans.
+type: time
+source: fact_disbursements.disbursed_date
+grains: [month, quarter, year]

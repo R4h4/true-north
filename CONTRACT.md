@@ -11,6 +11,8 @@ The harness consumes exactly one interface: the governed CLI (`tn`). Every call 
 
 Invocation: `uv run tn <command> ...` from the repo root (a stub with canned responses ships first; same contract, same goldens). All output is a single JSON envelope on stdout; logs go to stderr. Exit codes: `0` success, `1` handled error (envelope has `error`, including `INTERNAL`), `2` usage error. A non-zero exit without a parseable envelope is a crash — treat as `INTERNAL`.
 
+**Global `--dataset <key>` option** (before the command, e.g. `tn --dataset shinhan whoami --token T`) selects the dataset/tenant. Valid values: `retail` (default) and `shinhan`. Resolution precedence is **flag > `TN_DATASET` env var > `retail`**. An unregistered key returns `ok:false` with error code `UNKNOWN_DATASET` (exit 1; the message names the valid keys). Each dataset is fully isolated (its own warehouse, graph instance, and policy store); the envelope shape is identical across datasets.
+
 The Neo4j browser exposed by docker-compose is for **human exploration only** — permission annotations exist only through the CLI, and nothing observed over raw bolt is contractual.
 
 ---
@@ -109,6 +111,7 @@ Every command returns:
 | `INVALID_DIMENSION_VALUE` | Filter value not in the canonical vocabulary | `did_you_mean` (e.g. `"offline"` → `"in_store"`) |
 | `QUERY_REJECTED` | Cypher write attempt / multi-statement / non-read DSL | `reason` |
 | `INVALID_QUERY` | Syntax error | engine message passed through |
+| `UNKNOWN_DATASET` | Global `--dataset`/`TN_DATASET` names a dataset that isn't registered | `message` lists the valid keys |
 | `INTERNAL` | Unexpected failure inside the CLI/services | `message` is safe to surface; nothing else guaranteed |
 
 **Existence vs. permission is always distinguishable**: not-found is `METRIC_NOT_FOUND`; exists-but-forbidden is `ACCESS_DENIED_*` with a reason. That distinction is a product feature for this demo, not a leak. There is no fuzzy resolution on the warehouse surface — exact keys only; *concept* ambiguity is represented in the graph (§4.3) and expected to be handled there, across the harness's KG rounds.
@@ -219,10 +222,11 @@ MATCH (r:Role {key: 'marketing_ops'})-[:CAN_COMPUTE]->(m:Metric) RETURN m.key
 
 ## 5. Non-goals (v1)
 
-No real auth (static tokens), no write path anywhere, single metric per `tn query`, no raw-SQL surface for any role, no fuzzy metric resolution on the warehouse surface, no live semantic-layer→KG sync (compile step), single tenant, English-only interface. Canonical dimension values live in the graph and in `tn dimensions describe` — the harness never needs to guess value spellings.
+No real auth (static tokens), no write path anywhere, single metric per `tn query`, no raw-SQL surface for any role, no fuzzy metric resolution on the warehouse surface, no live semantic-layer→KG sync (compile step), English-only interface. Multiple datasets are supported (global `--dataset`), each fully isolated; there is still no cross-dataset query. Canonical dimension values live in the graph and in `tn dimensions describe` — the harness never needs to guess value spellings.
 
 ## Changelog
 
+- **0.3 multi-dataset (2026-07-11, envelope version unchanged)** — Global `--dataset <key>` option (valid: `retail` default, `shinhan`; also `TN_DATASET` env; precedence flag > env > default). New `UNKNOWN_DATASET` error code for an unregistered key. Each dataset is fully isolated (own warehouse, Neo4j instance, Postgres schema); envelope shape is identical across datasets. See ADR 0011.
 - **0.3 clarifications (2026-07-11, envelope version unchanged)** — Denial precedence: table-read blocks return `ACCESS_DENIED_TABLE`; `ACCESS_DENIED_METRIC` reserved for masked-column denials. Golden-README matcher conventions codified (exact-match field list; nullable template scalars; variant-shape record lists match positionally). Agent-facing usage guide added at `docs/USING-TN.md`.
 - **0.3** — DSL confirmed as the only warehouse surface (raw SQL ruled out). `applied_permissions`/`whoami.permissions` become typed objects (conformance-testable). Scalar serialization table (DATE/TIMESTAMP/NULL/NaN). `INTERNAL` error code. Golden examples in `contracts/examples/` made normative for structure; contract PRs must update them. `graph_compiled_at` on KG responses. All four services pre-registered as uv workspace members.
 - **0.2** — Normative-only rewrite: internals moved to service READMEs; `AMBIGUOUS_CONCEPT` dropped (exact-key surface, `METRIC_NOT_FOUND` + candidates; ambiguity lives in the graph); recursive Cypher serialization + `_access` scope; per-table freshness; number-safety; filter grammar, `--grain`, deterministic ordering; `ACCESS_DENIED_DIMENSION`; personas as observable behavior.

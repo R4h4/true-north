@@ -1,0 +1,6 @@
+key: channel
+name: Origination channel
+description: How the application/loan was originated.
+type: categorical
+source: dim_channel.channel_key
+canonical_values: [digital_app, pos_partner, dsa, telesales]

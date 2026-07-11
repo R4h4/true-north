@@ -1,0 +1,30 @@
+key: active_loans
+name: Active loans
+short_description: Count of loans active at a snapshot month.
+description: >
+  COUNT(loan_id) WHERE status = 'active' from fact_loan_snapshots at a given snapshot
+  month. Snapshot metric, same non-additivity caveat family as enr — pick a single
+  snapshot_month; summing across months double-counts loans that were active in
+  multiple snapshots.
+concept: active-loans
+type: count
+unit: count
+version: "0.1"
+formula: "COUNT(loan_id) WHERE status = 'active'"
+time_dimension: month
+dimensions: [product, channel, province, dpd_bucket]
+compute:
+  measures:
+    active_count:
+      table: fact_loan_snapshots
+      expr: loan_id
+      agg: count
+      time_column: snapshot_month
+      filters:
+        - {column: status, operator: "=", value: active}
+      joins:
+        - {table: fact_disbursements, left_on: loan_id, right_on: loan_id}
+        - {table: dim_customer, left_on: fact_disbursements.customer_id, right_on: customer_id}
+        - {table: dim_product, left_on: fact_disbursements.product_key, right_on: product_key}
+        - {table: dim_channel, left_on: fact_disbursements.channel, right_on: channel_key}
+  expr: "active_count"

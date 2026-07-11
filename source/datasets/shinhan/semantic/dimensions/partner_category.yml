@@ -1,0 +1,6 @@
+key: partner_category
+name: Partner category
+description: Category of POS partner (electronics, mobile, motorbike, appliances).
+type: categorical
+source: dim_partner.category
+canonical_values: [electronics, mobile, motorbike, appliances]

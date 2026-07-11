@@ -1,0 +1,27 @@
+key: disbursement_count
+name: Disbursement count
+short_description: Number of loans disbursed.
+description: >
+  COUNT of loan_id across fact_disbursements — one count per funded loan, not per
+  application (a small share of approved applications never disburse; see
+  disbursement_amount for the corresponding value).
+concept: disbursement-count
+type: count
+unit: count
+version: "0.1"
+formula: "COUNT(loan_id)"
+time_dimension: month
+dimensions: [product, channel, partner, province]
+compute:
+  measures:
+    loan_count:
+      table: fact_disbursements
+      expr: loan_id
+      agg: count
+      time_column: disbursed_date
+      joins:
+        - {table: dim_customer, left_on: customer_id, right_on: customer_id}
+        - {table: dim_partner, left_on: partner_id, right_on: partner_id}
+        - {table: dim_product, left_on: product_key, right_on: product_key}
+        - {table: dim_channel, left_on: channel, right_on: channel_key}
+  expr: "loan_count"

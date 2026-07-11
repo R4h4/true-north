@@ -1,0 +1,37 @@
+key: avg_ticket_size
+name: Average ticket size
+short_description: Average principal per disbursed loan.
+description: >
+  disbursement_amount / disbursement_count computed as a ratio of sums (SUM(principal) /
+  COUNT(loan_id)), NOT an average of per-loan averages — averaging averages across an
+  unevenly-sized grouping (e.g. per partner) misweights small partners.
+concept: avg-ticket-size
+type: ratio
+unit: VND
+version: "0.1"
+formula: "SUM(principal) / COUNT(loan_id)"
+time_dimension: month
+dimensions: [product, channel, partner, province]
+compute:
+  measures:
+    principal_sum:
+      table: fact_disbursements
+      expr: principal
+      agg: sum
+      time_column: disbursed_date
+      joins:
+        - {table: dim_customer, left_on: customer_id, right_on: customer_id}
+        - {table: dim_partner, left_on: partner_id, right_on: partner_id}
+        - {table: dim_product, left_on: product_key, right_on: product_key}
+        - {table: dim_channel, left_on: channel, right_on: channel_key}
+    loan_count:
+      table: fact_disbursements
+      expr: loan_id
+      agg: count
+      time_column: disbursed_date
+      joins:
+        - {table: dim_customer, left_on: customer_id, right_on: customer_id}
+        - {table: dim_partner, left_on: partner_id, right_on: partner_id}
+        - {table: dim_product, left_on: product_key, right_on: product_key}
+        - {table: dim_channel, left_on: channel, right_on: channel_key}
+  expr: "principal_sum / loan_count"
