@@ -36,7 +36,7 @@ def get_schema() -> dict:
 def _access_index(dataset: Dataset | None = None) -> AccessIndex:
     ds = dataset or get_dataset()
     semantic = load_semantic(ds.semantic_dir)
-    policy = load_governance_policy(ds.users_yaml, semantic=semantic)
+    policy = load_governance_policy(ds.users_yaml, semantic=semantic, dataset=ds.key)
     return AccessIndex(policy)
 
 

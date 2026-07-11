@@ -46,7 +46,7 @@ def build_from_sources(dataset: Dataset | None = None) -> tuple[Graph, object, A
     schema = load_schema(ds.schema_py)
     # Access derivation is single-sourced in governance.policy; the KG access index is a
     # thin adapter over it (ADR 0009).
-    gpolicy = load_governance_policy(ds.users_yaml, semantic=semantic)
+    gpolicy = load_governance_policy(ds.users_yaml, semantic=semantic, dataset=ds.key)
     access_index = AccessIndex(gpolicy)
 
     graph = build_graph(vocabulary, semantic, policy, schema, access_index)
