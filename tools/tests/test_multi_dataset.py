@@ -134,6 +134,24 @@ def test_cli_env_dataset_default_applies():
     assert envelope["error"]["code"] == "UNKNOWN_DATASET"
 
 
+@E2E
+def test_shinhan_query_carries_dataset_scoped_governance_metadata():
+    """Caveats and freshness must come from the DATASET's vocabulary and schema —
+    both were retail-bound seams once (constraints dir, _freshness schema_module).
+    Requires the provisioned demo stack (make demo)."""
+    res = _tn(
+        "--dataset", "shinhan", "query",
+        "--token", "tok-exec-sujin", "--metric", "npl_ratio", "--group-by", "product",
+    )
+    assert res.returncode == 0
+    envelope = json.loads(res.stdout)
+    assert envelope["ok"] is True
+    prov = envelope["metadata"]["provenance"]
+    assert prov["constraint_keys"], "shinhan constraints must attach (write-off caveat etc.)"
+    assert envelope["metadata"]["as_of"], "freshness must resolve from the shinhan schema"
+    assert envelope["metadata"]["freshness"].get("fact_loan_snapshots")
+
+
 # --- Postgres schema isolation ------------------------------------------------
 
 

@@ -21,27 +21,30 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 CONSTRAINTS_DIR = REPO_ROOT / "knowledge-graph" / "vocabulary" / "constraints"
 
 
-@lru_cache(maxsize=1)
-def _load_constraints() -> list[dict]:
-    if not CONSTRAINTS_DIR.is_dir():
-        return []
+@lru_cache(maxsize=None)
+def _load_constraints(constraints_dir: Path = CONSTRAINTS_DIR) -> tuple[dict, ...]:
+    if not constraints_dir.is_dir():
+        return ()
     out: list[dict] = []
-    for path in sorted(CONSTRAINTS_DIR.glob("*.yml")):
+    for path in sorted(constraints_dir.glob("*.yml")):
         try:
             doc = yaml.safe_load(path.read_text())
         except Exception:
             continue
         if isinstance(doc, dict) and "key" in doc:
             out.append(doc)
-    return out
+    return tuple(out)
 
 
-def constraint_keys_for(metric_key: str, tables: list[str]) -> list[str]:
+def constraint_keys_for(
+    metric_key: str, tables: list[str], constraints_dir: Path = CONSTRAINTS_DIR
+) -> list[str]:
     """Keys of constraints whose `constrains` targets this metric or a touched
-    table. Deterministic order (sorted). Empty until the vocabulary merges."""
+    table. Deterministic order (sorted). The dir is the DATASET's vocabulary
+    constraints folder (retail default == the historical hard-coded path)."""
     keys: set[str] = set()
     targets = {f"metric:{metric_key}"} | {f"table:{t}" for t in tables}
-    for c in _load_constraints():
+    for c in _load_constraints(constraints_dir):
         for tgt in c.get("constrains") or []:
             if tgt in targets:
                 keys.add(c["key"])

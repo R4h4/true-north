@@ -125,7 +125,7 @@ def metrics_list(token: str, dataset: str | None = None) -> dict:
 
 
 def metrics_describe(key: str, token: str, dataset: str | None = None) -> dict:
-    sem, pol, _ds = _services(dataset)
+    sem, pol, ds = _services(dataset)
     persona, err = _auth(pol, token)
     if err:
         return err
@@ -149,17 +149,18 @@ def metrics_describe(key: str, token: str, dataset: str | None = None) -> dict:
         "formula": metric.formula,
         "tables": metric.tables,
         "dimensions": dims,
-        "constraints": _describe_constraints(metric),
+        "constraints": _describe_constraints(metric, ds),
         "concept": {"key": metric.concept, "name": _concept_name(metric.concept)},
         "access": {"allowed": reason is None, "reason": reason},
     }
     return _env.ok_envelope(persona.public_short(), result, {}, [])
 
 
-def _describe_constraints(metric: Metric) -> list[dict]:
-    keys = _constraints.constraint_keys_for(metric.key, metric.tables)
+def _describe_constraints(metric: Metric, ds: Dataset) -> list[dict]:
+    constraints_dir = ds.vocab_dir / "constraints"
+    keys = _constraints.constraint_keys_for(metric.key, metric.tables, constraints_dir)
     out = []
-    for c in _constraints._load_constraints():
+    for c in _constraints._load_constraints(constraints_dir):
         if c.get("key") in keys:
             out.append({"key": c["key"], "statement": c.get("statement", "")})
     return out
@@ -261,10 +262,12 @@ def query(
     except (CompileError, FilterError) as e:
         return _env.error_envelope(persona.public_short(), e.code, e.message, e.details)
 
-    return _execute(sem, pol, persona, access, metric, cq, grain, start, end, ds.data_dir)
+    return _execute(sem, pol, persona, access, metric, cq, grain, start, end, ds)
 
 
-def _execute(sem, pol, persona, access, metric, cq: CompiledQuery, grain, start, end, data_dir: Path = DATA_DIR) -> dict:
+def _execute(sem, pol, persona, access, metric, cq: CompiledQuery, grain, start, end, ds: Dataset | None = None) -> dict:
+    ds = ds or get_dataset()
+    data_dir = ds.data_dir
     from query.engine import connect, list_tables
 
     warnings: list[dict] = []
@@ -299,7 +302,7 @@ def _execute(sem, pol, persona, access, metric, cq: CompiledQuery, grain, start,
     except _env.NumberTooLarge as e:
         return _env.error_envelope(persona.public_short(), "INTERNAL", str(e), None)
 
-    freshness, as_of, stale_warn = _freshness(conn, metric)
+    freshness, as_of, stale_warn = _freshness(conn, metric, ds)
     if stale_warn:
         warnings.append(stale_warn)
 
@@ -320,7 +323,9 @@ def _execute(sem, pol, persona, access, metric, cq: CompiledQuery, grain, start,
             "metric_key": metric.key,
             "metric_version": metric.version,
             "tables": metric.tables,
-            "constraint_keys": _constraints.constraint_keys_for(metric.key, metric.tables),
+            "constraint_keys": _constraints.constraint_keys_for(
+                metric.key, metric.tables, ds.vocab_dir / "constraints"
+            ),
             "compiled_sql": cq.sql,
         },
     }
@@ -360,9 +365,9 @@ def _coerce_rows(raw_rows, cq, units, tokenized_cols, banded_cols, warnings) -> 
     return out
 
 
-def _freshness(conn, metric: Metric):
+def _freshness(conn, metric: Metric, ds: Dataset):
     """MAX date per touched table; as_of = min of those; STALE_DATA if they diverge."""
-    schema = schema_module()
+    schema = schema_module(ds.schema_py)
     fresh: dict[str, str] = {}
     for table in metric.tables:
         col = _time_col_for(schema, table)
