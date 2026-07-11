@@ -1,6 +1,6 @@
 """The static `tn kg schema` payload (CONTRACT §4.1/§4.2/§4.4).
 
-Structure matches governance/fixtures/replay/kg-schema.json['response']['result'] exactly.
+Structure follows CONTRACT §4.1/§4.2/§4.4 (node labels, relationships, canonical queries).
 This is the graph's self-description — labels, relationship patterns, invariants, and the
 canonical example queries the harness bootstraps from. It is content, not derived from the
 live graph, so `tn kg schema` needs no token and no database round-trip.

@@ -1,22 +1,20 @@
-"""Recursive serialization (CONTRACT §3) produces the replay-fixture record shapes.
+"""Recursive serialization (CONTRACT §3) produces the CONTRACT §4.1 record shapes.
 
-Structure (key sets, nesting, _access placement) is asserted; values are illustrative
-per the golden README, so we check shape not content.
+Structure (key sets, nesting, _access placement) is asserted against the contract
+node shapes inline; values are illustrative, so we check shape not content. (These
+assertions used to read the replay-stub fixtures as shape oracles; the stub is gone
+per ADR 0004, so the expected shapes are pinned here directly.)
 """
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
 from knowledge_graph.serialize import Serializer
 
-REPLAY = Path(__file__).resolve().parents[2] / "governance" / "fixtures" / "replay"
-
-
-def _load_record(fixture: str, idx: int = 0) -> dict:
-    data = json.loads((REPLAY / fixture).read_text())
-    return data["response"]["result"]["records"][idx]
+# CONTRACT §4.1 governed-node key sets (Metric/Table/Dimension carry _access on the wire).
+_METRIC_KEYS = {"_label", "key", "name", "description", "type", "unit", "formula", "version", "_access"}
+_DIMENSION_KEYS = {"_label", "key", "name", "description", "type", "canonical_values", "_access"}
+_CONSTRAINT_KEYS = {"_label", "key", "statement", "severity"}
+_TABLE_KEYS = {"_label", "key", "description", "grain", "freshness_note", "_access"}
 
 
 def _shape(obj):
@@ -37,8 +35,7 @@ def test_metric_node_shape_matches_fixture(access_index, fakes):
         "version": "0.1",
     })
     out = ser.value(node)
-    fixture_m = _load_record("kg-resolve-retention.json")["m"]
-    assert set(out.keys()) == set(fixture_m.keys())
+    assert set(out.keys()) == _METRIC_KEYS
     assert out["_label"] == "Metric"
     assert out["_access"] == {"readable": True}
 
@@ -55,12 +52,9 @@ def test_denied_metric_carries_reason(access_index, fakes):
 
 
 def test_dimension_node_carries_type(access_index, fakes):
-    # CONTRACT §4.1 requires Dimension nodes carry `type`. The compiler now stamps it
-    # (build._dimension_props), so a real Dimension node serializes WITH `type`. The
-    # serializer is a pass-through: whatever props the node has are emitted, plus _access.
-    # (The replay-stub fixture kg-detail-net-revenue.json still omits `type`; that stub is
-    # out of scope for this package and dies at the conformance gate — it is now stale for
-    # the Dimension shape.)
+    # CONTRACT §4.1 requires Dimension nodes carry `type`. The compiler stamps it
+    # (build._dimension_props), and the serializer is a pass-through: whatever props the
+    # node has are emitted, plus _access.
     ser = Serializer(access_index, "data_analyst")
     node = fakes.Node("Dimension", {
         "key": "channel", "name": "Sales channel", "description": "…",
@@ -83,24 +77,23 @@ def test_concept_and_constraint_have_no_access(access_index, fakes):
     assert "_access" not in ser.value(constraint)
 
 
-def test_detail_record_shape_matches_fixture(access_index, fakes):
-    """A full metric-detail record (m + collect(dims/caveats/tables)) matches shape."""
+def test_detail_record_shape_matches_contract(access_index, fakes):
+    """A full metric-detail record (m + collect(dims/caveats/tables)) matches the
+    CONTRACT §4.1 node shapes."""
     ser = Serializer(access_index, "data_analyst")
     m = fakes.Node("Metric", {"key": "net_revenue", "name": "N", "description": "d",
                             "type": "derived", "unit": "VND", "formula": "f", "version": "0.1"})
     d = fakes.Node("Dimension", {"key": "channel", "name": "c", "description": "d",
-                              "canonical_values": ["app"]})
+                              "type": "categorical", "canonical_values": ["app"]})
     k = fakes.Node("Constraint", {"key": "b2b_value_skew", "statement": "s", "severity": "warning"})
     t = fakes.Node("Table", {"key": "fact_sales_lines", "description": "d",
                            "grain": "sales line", "freshness_note": "refreshed daily"})
     record = fakes.Record({"m": m, "dims": [d], "caveats": [k], "tables": [t]})
     out = ser.record(record)
-    fixture = _load_record("kg-detail-net-revenue.json")
-    # dims/caveats/tables fixtures have 2+ elements; compare shape of first element.
-    assert _shape(out["m"]) == _shape(fixture["m"])
-    assert _shape(out["dims"][0]) == _shape(fixture["dims"][0])
-    assert _shape(out["caveats"][0]) == _shape(fixture["caveats"][0])
-    assert _shape(out["tables"][0]) == _shape(fixture["tables"][0])
+    assert set(out["m"].keys()) == _METRIC_KEYS
+    assert set(out["dims"][0].keys()) == _DIMENSION_KEYS
+    assert set(out["caveats"][0].keys()) == _CONSTRAINT_KEYS
+    assert set(out["tables"][0].keys()) == _TABLE_KEYS
 
 
 def test_relationship_serialization(access_index, fakes):

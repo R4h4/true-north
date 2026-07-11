@@ -4,7 +4,7 @@ This module has NO Neo4j dependency — it turns the loaded dicts into plain nod
 records and asserts the CONTRACT §4.2 invariants. `compile.py` writes these into Neo4j;
 tests exercise the invariants without a running database.
 
-Node/edge property shapes match the replay-fixture instances exactly (CONTRACT §3/§4.1):
+Node/edge property shapes follow CONTRACT §3/§4.1:
 - Concept:    {key, name, definition, aliases}
 - Metric:     {key, name, description, type, unit, formula, version}
 - Dimension:  {key, name, description, type, canonical_values}   (CONTRACT §4.1)
