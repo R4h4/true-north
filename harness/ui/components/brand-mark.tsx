@@ -1,10 +1,10 @@
 "use client";
 
-// Compass-in-circle brand mark: green needle pointing north, navy tail
+// Compass-in-circle brand mark: violet needle pointing north, navy tail
 // south. `tone: "muted"` renders the grayscale variant for empty states.
 export function BrandMark({ size = 26, tone = "brand" }: { size?: number; tone?: "brand" | "muted" }) {
-  const ring = tone === "muted" ? "var(--muted)" : "var(--green)";
-  const needle = tone === "muted" ? "var(--muted)" : "var(--green)";
+  const ring = tone === "muted" ? "var(--muted)" : "var(--accent)";
+  const needle = tone === "muted" ? "var(--muted)" : "var(--accent)";
   return (
     <svg
       width={size}

@@ -40,10 +40,10 @@ if (typeof window !== "undefined") {
 }
 
 const PERSONAS = [
-  { id: "mai", label: "Mai · Executive" },
-  { id: "duc", label: "Đức · RM South" },
-  { id: "lan", label: "Lan · Marketing" },
-  { id: "binh", label: "Bình · Analyst" },
+  { id: "mai", label: "Executive" },
+  { id: "duc", label: "RM South" },
+  { id: "lan", label: "Marketing" },
+  { id: "binh", label: "Analyst" },
 ];
 
 // Conversation starters per persona - each exercises a governed path that
@@ -222,7 +222,6 @@ export default function Page() {
           <BrandMark />
           <h1>True North</h1>
         </div>
-        <span className="tag">Governed BI · tn contract</span>
         <div className="persona-picker">
           {PERSONAS.map((p) => (
             <button

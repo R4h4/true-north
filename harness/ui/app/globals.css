@@ -1,26 +1,30 @@
-/* True North design tokens — Holistics-inspired light theme.
-   Ink/surface/border values sampled from holistics.io product UI:
-   Inter, white surfaces on #F5F8FA, hairline #E6EDF3 borders,
-   brand green #259B6C, data navy #1E2A4A. */
+/* True North design tokens — WrenAI-inspired light theme.
+   Sampled from getwren.ai: IBM Plex Sans/Mono, near-black navy ink #060A1F,
+   violet accent #7C5CF0, cool #F7F8FC surfaces, 6-8px radii.
+   Green/red/amber stay as SEMANTIC access-status colors only. */
 
 :root {
-  --ink: #32353f;
-  --ink-secondary: #5c6470;
-  --muted: #8a94a6;
-  --bg-app: #f5f8fa;
+  --ink: #363d52;
+  --ink-strong: #060a1f;
+  --ink-secondary: #5b6172;
+  --muted: #8b90a3;
+  --bg-app: #f7f8fc;
   --surface: #ffffff;
-  --surface-subtle: #f9fbfc;
-  --border: #e6edf3;
-  --border-strong: #d8dfe8;
+  --surface-subtle: #fafbfe;
+  --border: #e8eaf2;
+  --border-strong: #d9dce8;
+  --accent: #7c5cf0;
+  --accent-dark: #6344d6;
+  --accent-tint: #f0ecfd;
   --green: #259b6c;
   --green-dark: #196848;
   --green-tint: #e5f5ee;
-  --navy: #1e2a4a;
+  --navy: #060a1f;
   --blue-tint: #e8f1fd;
   --red: #d6455d;
   --red-tint: #fdeef1;
   --amber: #b7791f;
-  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-card: 0 1px 2px rgba(6, 10, 31, 0.06);
 }
 
 * {
@@ -30,7 +34,7 @@
 }
 
 body {
-  font-family: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
   background: var(--bg-app);
   color: var(--ink);
   height: 100vh;
@@ -61,19 +65,9 @@ body {
 
 .topbar h1 {
   font-size: 14px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--ink);
-}
-
-.topbar .tag {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--green-dark);
-  background: var(--green-tint);
-  border: 1px solid #c4e8d8;
-  border-radius: 99px;
-  padding: 3px 10px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink-strong);
 }
 
 /* Persona picker: segmented control on the light topbar */
@@ -81,7 +75,7 @@ body {
   margin-left: auto;
   display: flex;
   gap: 2px;
-  background: #eef2f6;
+  background: #eef0f7;
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 2px;
@@ -141,14 +135,14 @@ body {
   background: var(--surface);
   display: flex;
   flex-direction: column;
-  /* CopilotKit theme variables — Holistics light */
+  /* CopilotKit theme variables — Wren light */
   --copilot-kit-background-color: #ffffff;
-  --copilot-kit-secondary-color: #f5f8fa;
-  --copilot-kit-secondary-contrast-color: #32353f;
-  --copilot-kit-primary-color: #259b6c;
+  --copilot-kit-secondary-color: #f7f8fc;
+  --copilot-kit-secondary-contrast-color: #363d52;
+  --copilot-kit-primary-color: #7c5cf0;
   --copilot-kit-contrast-color: #ffffff;
-  --copilot-kit-separator-color: #e6edf3;
-  --copilot-kit-muted-color: #8a94a6;
+  --copilot-kit-separator-color: #e8eaf2;
+  --copilot-kit-muted-color: #8b90a3;
   --copilot-kit-input-background-color: #ffffff;
 }
 
@@ -170,8 +164,8 @@ body {
   to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
 @keyframes tn-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(37, 155, 108, 0.3); }
-  55% { box-shadow: 0 0 0 7px rgba(37, 155, 108, 0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(124, 92, 240, 0.3); }
+  55% { box-shadow: 0 0 0 7px rgba(124, 92, 240, 0); }
 }
 @keyframes tn-fade {
   from { opacity: 0; transform: translateY(4px); }
@@ -186,6 +180,19 @@ body {
    centers in the pane, the hero overlay puts the greeting above it and the
    sources bar + suggestion chips below it. Everything reverts to the pinned
    bottom-input layout once the first message is sent. */
+.chat-pane.empty {
+  /* short panes scroll to reach the chips instead of clipping them */
+  overflow-y: auto;
+}
+
+.chat-pane.empty > div {
+  flex: 0 0 auto;
+}
+
+.chat-pane.empty .copilotKitChat {
+  height: auto;
+}
+
 .chat-pane.empty .copilotKitMessagesContainer {
   display: none;
 }
@@ -211,7 +218,7 @@ body {
 
 .chat-pane.empty .copilotKitInput {
   border: 1px solid var(--border-strong);
-  border-radius: 16px;
+  border-radius: 12px;
   box-shadow: var(--shadow-card);
 }
 
@@ -232,10 +239,10 @@ body {
 }
 
 .hero-greeting h3 {
-  font-size: 17px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--ink);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--ink-strong);
 }
 
 .hero-greeting p {
@@ -344,19 +351,19 @@ body {
 }
 
 .hero-chip:hover svg {
-  color: var(--green-dark);
+  color: var(--accent-dark);
 }
 
 .chat-pane .copilotKitMessage {
   animation: tn-fade 0.3s ease both;
 }
 
-/* User messages: Holistics-style light blue bubble with a tail corner, ink
-   text (the green primary color stays on the send button only). Specificity
-   must beat the library's own .copilotKitMessage.copilotKitUserMessage rule. */
+/* User messages: violet-tinted bubble with a tail corner, ink text (the
+   accent stays saturated on the send button only). Specificity must beat
+   the library's own .copilotKitMessage.copilotKitUserMessage rule. */
 .chat-pane .copilotKitMessage.copilotKitUserMessage {
-  background: var(--blue-tint);
-  color: #21324e;
+  background: var(--accent-tint);
+  color: #2c2350;
   border-radius: 12px 12px 3px 12px;
   max-width: 78%;
   font-weight: 450;
@@ -625,7 +632,7 @@ cpk-web-inspector {
 }
 
 .tool-step .step-args {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11px;
   color: var(--muted);
   overflow: hidden;
@@ -638,7 +645,7 @@ cpk-web-inspector {
   height: 11px;
   flex-shrink: 0;
   border: 2px solid var(--border-strong);
-  border-top-color: var(--green);
+  border-top-color: var(--accent);
   border-radius: 50%;
   animation: step-spin 0.7s linear infinite;
 }
@@ -725,12 +732,12 @@ cpk-web-inspector {
 }
 
 .ask-user-card button:hover {
-  border-color: var(--green);
-  background: var(--green-tint);
+  border-color: var(--accent);
+  background: var(--accent-tint);
 }
 
 .ask-user-card button:focus-visible {
-  outline: 2px solid var(--green);
+  outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
 
@@ -738,8 +745,8 @@ cpk-web-inspector {
   display: inline-block;
   font-size: 12px;
   font-weight: 500;
-  color: var(--green-dark);
-  background: var(--green-tint);
+  color: var(--accent-dark);
+  background: var(--accent-tint);
   border-radius: 99px;
   padding: 3px 10px;
 }

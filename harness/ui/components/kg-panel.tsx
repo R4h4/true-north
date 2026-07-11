@@ -16,9 +16,9 @@ export type KgGraph = { nodes: KgNode[]; edges: KgEdge[] };
 
 const BAND_ORDER = ["Concept", "Metric", "Dimension", "Constraint", "Table"];
 
-const MONO = "ui-monospace, SFMono-Regular, Menlo, monospace";
+const MONO = "var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace";
 const TYPE_STYLES: Record<string, { bg: string; border: string; chip: string; name: CSSProperties }> = {
-  Concept: { bg: "var(--green-tint)", border: "#c4e8d8", chip: "var(--green-dark)", name: { fontSize: 11.5, fontWeight: 600, color: "var(--green-dark)" } },
+  Concept: { bg: "var(--accent-tint)", border: "#dcd2fa", chip: "var(--accent-dark)", name: { fontSize: 11.5, fontWeight: 600, color: "var(--accent-dark)" } },
   Metric: { bg: "var(--surface)", border: "var(--border-strong)", chip: "var(--navy)", name: { fontSize: 11, fontFamily: MONO, color: "var(--navy)", fontWeight: 500 } },
   Dimension: { bg: "var(--blue-tint)", border: "#cfe0f5", chip: "#3b5a8a", name: { fontSize: 11, fontFamily: MONO, color: "#21324e" } },
   Constraint: { bg: "#fdf6e3", border: "#ecd9b0", chip: "var(--amber)", name: { fontSize: 11, color: "var(--amber)", fontWeight: 500 } },
@@ -27,7 +27,7 @@ const TYPE_STYLES: Record<string, { bg: string; border: string; chip: string; na
 const FALLBACK_STYLE = TYPE_STYLES.Table;
 
 const LEGEND: { label: string; bg: string; border: string }[] = [
-  { label: "Concept", bg: "var(--green-tint)", border: "#c4e8d8" },
+  { label: "Concept", bg: "var(--accent-tint)", border: "#dcd2fa" },
   { label: "Metric", bg: "var(--surface)", border: "var(--navy)" },
   { label: "Dimension", bg: "var(--blue-tint)", border: "#cfe0f5" },
   { label: "Table", bg: "var(--surface-subtle)", border: "var(--border-strong)" },
