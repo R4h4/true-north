@@ -10,13 +10,14 @@ dependencies: [1]
 
 ## Overview
 
-Reconciled to contract v0.3 (PR #2): CONTRACT.md specifies that "a stub with canned
-responses ships first" under the same `tn` entrypoint and goldens. Pending the phase-1
-ownership answer, the stub itself is expected to be Karsten's (it lives under `tn` in his
-tree). Phong's deliverables in this phase are the **conformance runner** and the **replay
-fixture set** that makes the stub rich enough for agent development. The earlier idea of
-a Phong-owned DSL-to-DuckDB mock compiler is dropped — YAGNI: goldens are normative for
-structure, and agent-loop development needs believable envelopes, not real aggregation.
+**Resolved by Karsten's [PR #4](https://github.com/R4h4/true-north/pull/4)** (Typer
+replay stub in `governance/`, conformance suite in `contracts/conformance/`, agent-dev
+replay fixtures for three trap cycles + error paths, and `docs/USING-TN.md` as the
+agent-facing guide). This phase is now Karsten's; Phong's remaining involvement is
+**fixture-only PRs** to `governance/fixtures/replay/` when the harness needs scenarios
+the stub doesn't cover (agreed: same-day rubber-stamp merges). The earlier ideas of a
+Phong-owned mock or DSL-to-DuckDB compiler are dead — the requirements below stand as
+the review checklist for PR #4.
 
 ## Requirements
 

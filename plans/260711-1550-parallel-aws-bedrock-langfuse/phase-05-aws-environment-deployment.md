@@ -19,7 +19,7 @@ one EC2 instance so the project demonstrably "runs on AWS".
 - Functional: GPT-5.5 callable via the bedrock-mantle Responses endpoint
   (`openai.gpt-5.5` — confirm exact ID and serving region, us-east-1 vs us-east-2,
   against `aws bedrock list-foundation-models` before hardcoding anything); Langfuse
-  project receiving traces; demo EC2 serving the Streamlit chat with all services up.
+  project receiving traces; demo EC2 serving the harness UI with all services up.
 - Non-functional: the only AWS credential on the EC2 box is a **Bedrock API key scoped to
   bedrock invocation** (bedrock-mantle takes bearer-style auth, so a pure instance-role
   setup doesn't apply; a scoped key is the pragmatic equivalent); daily cost ~USD 5–7
@@ -33,14 +33,16 @@ EC2 t3.xlarge (ap-southeast-1, Ubuntu 22.04, Elastic IP,
                Bedrock API key in env — scoped to bedrock invocation only)
   docker-compose (infra/docker-compose.yml):
     neo4j:5-community          (7474/7687, volume, heap capped ~4G)
-    harness                    (Streamlit :8501; calls `uv run tn` — real CLI by then)
+    harness-agent              (FastAPI AG-UI :8000; calls `uv run tn` — real CLI by then)
+    harness-ui                 (Next.js + CopilotKit :3000; cloudflared points here)
     [langfuse stack]           (only if self-host decision — 6 containers: web, worker,
                                 postgres, clickhouse, redis, minio)
   security group: 22 (team IPs only); nothing else inbound
   UI exposure: SSH tunnel during dev; cloudflared quick tunnel (outbound-only, free HTTPS
   URL) on demo day — certbot/Let's Encrypt on *.compute.amazonaws.com is banned by LE
-  policy, so nginx+certbot needs a real domain we don't want to manage. App itself gated
-  by DEMO_PASSPHRASE (phase 3).
+  policy, so nginx+certbot needs a real domain we don't want to manage. App is open
+  (no auth, Phong's decision) — quota guarded by MAX_TURNS_PER_SESSION (phase 3) and
+  the unlisted tunnel URL.
 ```
 
 - Bedrock note: GPT-5.5 serves from **us-east-1/us-east-2** via the bedrock-mantle
@@ -69,11 +71,14 @@ EC2 t3.xlarge (ap-southeast-1, Ubuntu 22.04, Elastic IP,
 2. Mint a **Bedrock API key** (Bedrock console → API keys) backed by an identity whose
    policy is bedrock-invocation-only; set `OPENAI_API_KEY` +
    `OPENAI_BASE_URL=https://bedrock-mantle.<region>.api.aws/openai/v1` on both laptops.
-3. Smoke test: one `client.responses.create(model="openai.gpt-5.5", ...)` from Python via
-   the OpenAI SDK, including one function-tool round-trip (the item format is the most
-   likely early bug). **Same session:** check Service Quotas for OpenAI-model RPM/TPM —
-   fresh-account quotas can sit low; request increases immediately (they take days).
-   Confirm whether `previous_response_id` works on bedrock-mantle while you're there.
+3. Smoke test: one tool-use round-trip through a minimal Strands agent on
+   `OpenAIResponsesModel(client_args={base_url, api_key}, stateful=False)` — GPT-5.5 is
+   **Responses-only** on Bedrock (confirmed 2026-07-11), so this just validates the
+   Bedrock API key, exact model id, and base_url path (note: GPT-5.5 serves on the
+   bedrock-mantle `openai/v1/responses` path — confirm the SDK's base_url composes to
+   it). LiteLLM's bedrock-mantle provider is the fallback if the path misbehaves.
+   **Same session:** check Service Quotas for OpenAI-model RPM/TPM — fresh-account
+   quotas can sit low; request increases immediately (they take days).
 4. Langfuse: per the validation decision — Cloud: create org/project, issue keys to both;
    self-host: defer to 5B, use Cloud keys meanwhile (traces are throwaway).
 5. Local Neo4j one-liner documented for Karsten:
@@ -83,7 +88,7 @@ EC2 t3.xlarge (ap-southeast-1, Ubuntu 22.04, Elastic IP,
 6. Launch t3.xlarge + instance role + **Elastic IP**; install docker + compose plugin.
    If the Langfuse self-host decision landed: go t3.2xlarge instead — 16 GB does not
    credibly fit Neo4j (~6–7 GB real footprint) + 6 Langfuse containers + full-scale
-   DuckDB spikes + Streamlit.
+   DuckDB spikes + the two harness containers.
 7. Write `infra/docker-compose.yml`: **pin image tags** (neo4j:5.x.y, langfuse versions);
    Neo4j heap capped via the current env names (`NEO4J_server_memory_heap_max__size` —
    the old `dbms.*` names are silently ignored by the 5.x image); Langfuse secrets

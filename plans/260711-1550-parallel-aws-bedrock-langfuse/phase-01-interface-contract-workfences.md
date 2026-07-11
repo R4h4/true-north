@@ -45,10 +45,8 @@ Cypher examples served by `tn kg schema`; 4 personas as observable behavior.
 
 To confirm in the same review (genuinely open, not in the PR body):
 
-1. **Stub ownership** — CONTRACT.md says "a stub with canned responses ships first; same
-   contract, same goldens" under the `tn` entrypoint. Recommend: Karsten ships the stub
-   (it lives in his tree under `tn`); Phong owns the conformance runner and contributes
-   replay fixtures for extra demo questions (see phase 2).
+1. ~~**Stub ownership**~~ — **resolved by PR #4**: Karsten ships the stub, conformance
+   suite, and agent-dev fixtures; Phong contributes fixture-only PRs as needed.
 2. **`ROW_LIMIT` / `STALE_DATA` warning codes** — closed set or open? (Harness narrates
    warnings; an open set means narrate generically.)
 
