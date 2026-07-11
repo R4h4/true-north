@@ -1,0 +1,31 @@
+key: inventory_days
+name: Inventory days
+short_description: Days of stock on hand
+description: >
+  Approximate days of stock on hand: average on-hand units per store×sku across
+  the weekly fact_inventory snapshots, divided by average weekly units sold,
+  times seven. fact_inventory is a WEEKLY periodic snapshot — on_hand_qty is
+  AVERAGED across snapshot weeks, never summed (summing 52 weeks 52x-counts the
+  same physical stock). Reads fact_inventory, so roles without that table are
+  denied at the table level.
+concept: inventory-days
+type: derived
+unit: count
+version: "0.1"
+formula: "7 * AVG(on_hand_qty per week) / AVG(weekly units sold)"
+time_dimension: date
+dimensions: [region, province, category, subcategory, brand, store_format]
+compute:
+  measures:
+    avg_on_hand:
+      table: fact_inventory
+      expr: on_hand_qty
+      agg: avg
+      time_column: snapshot_date
+    weekly_units:
+      table: fact_sales_lines
+      expr: qty
+      agg: sum
+      time_column: ts
+  expr: "avg_on_hand / weekly_units"
+  template: inventory_days

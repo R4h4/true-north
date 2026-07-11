@@ -1,0 +1,29 @@
+key: repeat_purchase_rate_90d
+name: Repeat-purchase rate (90d)
+short_description: Second purchase within 90 days
+description: >
+  Share of customers whose second purchase falls within 90 days of their first.
+  Computed over loyalty members only (non-NULL customer_id); walk-in retail lines
+  with NULL customer_id are excluded from both numerator and denominator. A
+  ratio in [0, 1].
+concept: repeat-purchase-retention
+type: ratio
+unit: ratio
+version: "0.1"
+formula: "customers with 2nd purchase ≤ 90d after 1st / customers with ≥1 purchase"
+time_dimension: date
+dimensions: [channel]
+compute:
+  measures:
+    repeaters:
+      table: fact_sales_lines
+      expr: customer_id
+      agg: count_distinct
+      time_column: ts
+    buyers:
+      table: fact_sales_lines
+      expr: customer_id
+      agg: count_distinct
+      time_column: ts
+  expr: "repeaters / buyers"
+  template: repeat_purchase_rate_90d

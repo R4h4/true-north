@@ -1,0 +1,7 @@
+key: customer_retention
+name: Customer Retention
+definition: >-
+  The degree to which customers keep transacting or stay active over time. Ambiguous: pick a variant.
+aliases: [retention, customer retention, churn inverse]
+variant_of: null
+measured_by: null

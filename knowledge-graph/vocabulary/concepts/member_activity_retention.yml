@@ -1,0 +1,7 @@
+key: member_activity_retention
+name: Loyalty-member activity retention
+definition: >-
+  Share of loyalty members active in a rolling window.
+aliases: [member active rate, active member retention]
+variant_of: customer_retention
+measured_by: member_active_rate_30d

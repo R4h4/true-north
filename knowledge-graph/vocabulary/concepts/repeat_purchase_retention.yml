@@ -1,0 +1,7 @@
+key: repeat_purchase_retention
+name: Repeat-purchase retention
+definition: >-
+  Share of customers who purchase again within a fixed window.
+aliases: [repeat purchase, rebuy rate]
+variant_of: customer_retention
+measured_by: repeat_purchase_rate_90d

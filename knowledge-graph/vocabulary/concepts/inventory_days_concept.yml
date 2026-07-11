@@ -1,0 +1,7 @@
+key: inventory_days_concept
+name: Inventory days
+definition: >-
+  Days of stock on hand at current sell-through. Unambiguous — a single governed calculation.
+aliases: [days of cover, days of stock, stock cover]
+variant_of: null
+measured_by: inventory_days
