@@ -1,9 +1,9 @@
 """Typed governed tools for the Strands agent.
 
 The model never writes Cypher or SQL. KG tools render the canonical Cypher
-from CONTRACT.md §4.4 harness-side (byte-exact with the replay fixtures in
-docs/USING-TN.md), so every stub call is fixture-exact by construction and
-identical against the real graph later.
+from CONTRACT.md §4.4 harness-side, so every call the agent makes is a known,
+gate-tested shape (harness/scripts/check_governed_cli.py exercises the same
+renderers against the live CLI).
 
 The persona token is a ContextVar set per session/run by the caller
 (server, smoke script) - tools never take it as a model-visible argument.
@@ -26,13 +26,15 @@ _run_cache: ContextVar[dict] = ContextVar("tn_run_cache")
 def reset_run_cache() -> None:
     _run_cache.set({})
 
-# Canonical Cypher (CONTRACT §4.4). Whitespace and quoting must stay byte-exact:
-# the stub replays on exact match.
+# Canonical Cypher (CONTRACT §4.4), extended with the direct MEASURED_BY path:
+# unambiguous Concepts measure a Metric directly (no variants), and the
+# contract's variant-only pattern would return them with m = null.
 _RESOLVE_TERM = (
     "MATCH (c:Concept) WHERE c.name =~ '{rx}' "
     "OR any(a IN c.aliases WHERE a =~ '{rx}') "
     "OPTIONAL MATCH (c)<-[:VARIANT_OF]-(v:Concept)-[:MEASURED_BY]->(m:Metric) "
-    "RETURN c, v, m"
+    "OPTIONAL MATCH (c)-[:MEASURED_BY]->(dm:Metric) "
+    "RETURN c, v, m, dm"
 )
 _METRIC_DETAIL = (
     "MATCH (m:Metric {{key: '{key}'}}) "
@@ -91,16 +93,17 @@ def metric_detail_cypher(metric_key: str) -> str:
 
 
 def access_check_cypher(metric_keys: list[str]) -> str:
-    """Render the canonical access-annotation query (no space in join: fixture-exact)."""
+    """Render the canonical access-annotation query."""
     for key in metric_keys:
         if not _KEY_RE.match(key):
             raise ValueError(f"metric_key must be snake_case, got {key!r}")
     return _ACCESS_CHECK.format(keys=",".join(f"'{k}'" for k in metric_keys))
 
 
-def _is_no_fixture(envelope: dict) -> bool:
-    err = envelope.get("error") or {}
-    return err.get("code") == "INTERNAL" and "fixture" in (err.get("message") or "")
+def _no_matches(envelope: dict) -> bool:
+    if not envelope.get("ok"):
+        return True
+    return not ((envelope.get("result") or {}).get("records") or [])
 
 
 @tool
@@ -108,18 +111,18 @@ def resolve_term(term: str) -> dict:
     """Resolve a business term in the knowledge graph. Pass the SINGLE most
     distinctive word ('retention', 'basket', 'margin') or '|'-alternatives
     ('revenue|gmv') - never a full phrase. Returns matching Concepts, their
-    variants, and the Metrics measuring them. A parent Concept WITHOUT a
-    measuring Metric means the term is ambiguous: ask the user which variant
-    they mean - never guess."""
+    variants, and the Metrics measuring them (m via variants, dm directly).
+    A parent Concept WITHOUT a measuring Metric means the term is ambiguous:
+    ask the user which variant they mean - never guess."""
     envelope = _with_token(["kg", "query", resolve_term_cypher(term)])
-    if _is_no_fixture(envelope) and " " in term:
-        # Multi-word phrase missed the fixtures/graph: fall back to each
-        # distinctive word so 'customer retention' still resolves 'retention'.
+    if _no_matches(envelope) and " " in term:
+        # Multi-word phrase matched nothing: fall back to each distinctive
+        # word so 'customer retention' still resolves 'retention'.
         for word in sorted(term.split(), key=len, reverse=True):
             if len(word) <= 3:
                 continue
             envelope = _with_token(["kg", "query", resolve_term_cypher(word)])
-            if not _is_no_fixture(envelope):
+            if not _no_matches(envelope):
                 break
     return envelope
 

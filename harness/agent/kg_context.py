@@ -12,10 +12,11 @@ a sidebar gap must not break a turn.
 from typing import Any
 
 # Edge semantics between record variables of the canonical queries
-# (resolve: c/v/m; detail: m/dims/caveats/tables; access check: m/caveats).
+# (resolve: c/v/m/dm; detail: m/dims/caveats/tables; access check: m/caveats).
 _EDGE_RULES = [
     ("v", "c", "VARIANT_OF"),
     ("v", "m", "MEASURED_BY"),
+    ("c", "dm", "MEASURED_BY"),
     ("m", "dims", "HAS_DIMENSION"),
     ("caveats", "m", "CONSTRAINS"),
     ("m", "tables", "COMPUTED_FROM"),

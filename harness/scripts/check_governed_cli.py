@@ -1,11 +1,10 @@
-"""Fixture entry gate (phase-3 step 3): replay every CLI invocation the four
-DoD conversations need and assert the stub answers with the expected outcome.
+"""Governed-CLI entry gate: run every CLI invocation the four DoD
+conversations need against the live `tn` CLI and assert the expected outcome.
 
-Run from repo root:  uv run python harness/scripts/check_fixtures.py
-Exit 0 = gate open. KNOWN GAPS are asserted too (they currently return
-INTERNAL "no replay fixture") so this script doubles as the checklist for
-fixture-only PRs; when Karsten adds a fixture the gap line flips to FIXED and
-should be promoted to the main list.
+Prereqs (see docs/USING-TN.md): Neo4j up (`docker compose up -d`), data
+generated, graph compiled. Run from repo root:
+    uv run python harness/scripts/check_fixtures.py
+Exit 0 = gate open.
 """
 
 import sys
@@ -19,9 +18,9 @@ from agent.tools import (  # noqa: E402
     resolve_term_cypher,
 )
 
-# The gate must exercise the SAME renderers the live tools use - if a template
-# drifts from the stub's fixtures by one byte, the gate fails loudly here
-# instead of the agent missing every fixture at runtime.
+# The gate exercises the SAME Cypher renderers the live tools use - if a
+# template drifts from what the graph answers, the gate fails loudly here
+# instead of the agent failing mid-demo.
 
 BINH, MAI, DUC, LAN = "tok-analyst-binh", "tok-exec-mai", "tok-rm-south-duc", "tok-mkt-lan"
 
@@ -37,10 +36,12 @@ CHECKS = [
     ("DoD1 query", ["query", "--metric", "repeat_purchase_rate_90d", "--group-by", "channel", "--token", BINH], None),
     # DoD-2: Mai vs Duc row filter
     ("DoD2 resolve revenue (mai)", ["kg", "query", resolve_term_cypher("revenue|gmv"), "--token", MAI], None),
+    ("DoD2 resolve revenue (duc)", ["kg", "query", resolve_term_cypher("revenue|gmv"), "--token", DUC], None),
     ("DoD2 detail net_revenue (mai)", ["kg", "query", metric_detail_cypher("net_revenue"), "--token", MAI], None),
     ("DoD2 query mai", ["query", "--metric", "net_revenue", "--group-by", "channel", "--token", MAI], None),
     ("DoD2 query duc", ["query", "--metric", "net_revenue", "--group-by", "channel", "--token", DUC], None),
     # DoD-3: Lan exists-but-denied
+    ("DoD3 resolve margin (lan)", ["kg", "query", resolve_term_cypher("margin"), "--token", LAN], None),
     ("DoD3 access annotations (lan)", ["kg", "query", access_check_cypher(['net_revenue','gross_margin']), "--token", LAN], None),
     ("DoD3 describe gross_margin (lan)", ["metrics", "describe", "gross_margin", "--token", LAN], None),
     ("DoD3 gross_margin denied", ["query", "--metric", "gross_margin", "--group-by", "category", "--token", LAN], "ACCESS_DENIED_METRIC"),
@@ -48,14 +49,7 @@ CHECKS = [
     # DoD-4: Mai self-correction
     ("DoD4 metric not found", ["query", "--metric", "revenue", "--token", MAI], "METRIC_NOT_FOUND"),
     ("DoD4 bad dim value", ["query", "--metric", "net_revenue", "--filter", "channel = 'offline'", "--token", MAI], "INVALID_DIMENSION_VALUE"),
-]
-
-# Requests the DoD conversations will realistically make that have NO fixture
-# yet -> each needs a fixture-only PR. Asserted as INTERNAL so drift is loud.
-KNOWN_GAPS = [
-    ("GAP DoD4 corrected retry (in_store)", ["query", "--metric", "net_revenue", "--group-by", "channel", "--filter", "channel = 'in_store'", "--token", MAI]),
-    ("GAP DoD2 duc resolve revenue", ["kg", "query", resolve_term_cypher("revenue|gmv"), "--token", DUC]),
-    ("GAP DoD3 lan resolve margin", ["kg", "query", resolve_term_cypher("margin"), "--token", LAN]),
+    ("DoD4 corrected retry (in_store)", ["query", "--metric", "net_revenue", "--group-by", "channel", "--filter", "channel = 'in_store'", "--token", MAI], None),
 ]
 
 
@@ -67,14 +61,6 @@ def main() -> int:
         ok = code == expected_error if expected_error else env.get("ok") is True
         print(f"{'PASS' if ok else 'FAIL'}  {label}" + ("" if ok else f"  (got error={code})"))
         failures += 0 if ok else 1
-
-    for label, args in KNOWN_GAPS:
-        env = run_tn(args)
-        code = (env.get("error") or {}).get("code")
-        if code == "INTERNAL":
-            print(f"GAP   {label}  (needs fixture-only PR)")
-        else:
-            print(f"FIXED {label}  (fixture landed - promote to CHECKS)")
 
     print(f"\n{'GATE OPEN' if failures == 0 else 'GATE CLOSED'}: {failures} failures")
     return 1 if failures else 0
