@@ -10,9 +10,10 @@ dependencies: [2]
 
 ## Overview
 
-Phong's main build: the agent loop on Bedrock's Converse API with two tools (knowledge
-graph, warehouse) calling the governed CLI, fully traced in Langfuse, behind a Streamlit
-chat with a persona picker. Developed 100% against the stub `tn` CLI (Phase 2 fixtures).
+Phong's main build: the agent loop on **GPT-5.5 via Bedrock's OpenAI-compatible
+Responses API** with tools (knowledge graph, warehouse) calling the governed CLI, fully
+traced in Langfuse, behind a Streamlit chat with a persona picker. Developed 100% against
+the stub `tn` CLI (Phase 2 fixtures).
 
 ## Requirements
 
@@ -28,34 +29,37 @@ chat with a persona picker. Developed 100% against the stub `tn` CLI (Phase 2 fi
 ```
 Streamlit chat ── run_agent(question, persona)          harness/agent/
                      │  @observe span, propagate_attributes(user_id=persona, session_id=chat)
-                     ├─ bedrock.converse(modelId=$BEDROCK_MODEL_ID,  # global.anthropic.claude-sonnet-5 — verify day 0
-                     │                   toolConfig={query_knowledge_graph, query_warehouse})
-                     │    @observe generation: usage_details from response["usage"]
+                     ├─ openai_client.responses.create(model=$MODEL_ID,  # openai.gpt-5.5 — verify day 0
+                     │        base_url=$OPENAI_BASE_URL,  # bedrock-mantle .../openai/v1
+                     │        tools=[query_knowledge_graph, query_warehouse, ...])
+                     │    generation traced via langfuse.openai drop-in (usage auto-captured)
                      └─ tool dispatch → subprocess: $GOVERNED_CLI_CMD (default `uv run tn`)
                           tn kg query|metrics list|metrics describe|query --token $TOKEN ...
-                          @observe span per tool call; v0.3 envelope passed back as toolResult
+                          @observe span per tool call; v0.3 envelope → function_call_output
 ```
 
-- Converse tool-use mechanics: content blocks are `{"toolUse": {...}}` and results are
-  sent back as `{"toolResult": {"toolUseId": ..., "content": [{"json": ...}]}}` —
-  follow the AWS "Call a tool with the Converse API" doc, not memory. (The research
-  report's sketch uses Anthropic-API style blocks; verify against AWS docs when coding.)
-- Sonnet 5 has always-on adaptive reasoning: `reasoningContent` blocks appear in responses
-  and **must be echoed back verbatim** in the message history on subsequent turns of the
-  tool loop; reasoning tokens bill (and burn quota) as output tokens.
+- Responses-API tool-use mechanics: define `tools=[{type: "function", name, parameters}]`;
+  the model returns `function_call` output items; append each result as a
+  `function_call_output` item (with the matching `call_id`) to the next request's input —
+  follow the AWS "Get started with OpenAI models on Bedrock" doc + OpenAI Responses docs,
+  not memory. GPT-5.5 is a reasoning model: pass reasoning items back with the
+  conversation as the docs require (or use `previous_response_id` if bedrock-mantle
+  supports server-side state — verify day 0); reasoning tokens bill as output.
 - Streamlit reruns the whole script on every interaction: conversation history, Langfuse
   session id, and persona live in `st.session_state`; call `langfuse.flush()` at the end
   of each turn or traces are lost on rerun.
-- Langfuse SDK **v4**: `@observe(as_type="generation")` wrapper around the converse call,
-  `propagate_attributes` for session/user. No Bedrock auto-instrumentation exists —
-  wrapping is manual. Cost tracking: log token counts now; optional custom model pricing
-  in Langfuse dashboard later.
+- Langfuse SDK **v4**: try the **`langfuse.openai` drop-in** first (wraps the OpenAI
+  client; generations + token usage auto-captured — verify it tolerates the
+  bedrock-mantle base URL); keep `@observe` spans for the agent loop and tool calls
+  either way. Cost tracking: add `openai.gpt-5.5` pricing manually in the Langfuse
+  dashboard later.
 - Tools map 1:1 onto contract v0.3 commands (CONTRACT.md is the spec, not this plan):
   `query_knowledge_graph(cypher)` → `tn kg query`; `query_warehouse(metric, group_by[],
-  grain, filters[], start, end)` → `tn query` flags — the model never writes SQL, Converse
-  inputSchema enforces the shape; `list_metrics()` / `describe_metric(key)` → `tn metrics
-  list|describe`. At startup, load `tn kg schema` (labels, invariants, canonical Cypher
-  examples) into the system prompt — the contract hands us the agent's Cypher cookbook.
+  grain, filters[], start, end)` → `tn query` flags — the model never writes SQL, the
+  function-tool JSON schema enforces the shape; `list_metrics()` / `describe_metric(key)`
+  → `tn metrics list|describe`. At startup, load `tn kg schema` (labels, invariants,
+  canonical Cypher examples) into the system prompt — the contract hands us the agent's
+  Cypher cookbook.
 - Self-correction paths are contract features: `METRIC_NOT_FOUND` carries `candidates[]`,
   `INVALID_DIMENSION_VALUE` carries `did_you_mean` — pass `error.details` through in
   toolResults so the model recovers in one turn instead of flailing.
@@ -72,24 +76,27 @@ Streamlit chat ── run_agent(question, persona)          harness/agent/
 ## Related Code Files
 
 - Create: `harness/agent/__init__.py`, `harness/agent/loop.py`, `harness/agent/tools.py`,
-  `harness/agent/bedrock_client.py`, `harness/agent/tracing.py`,
+  `harness/agent/llm_client.py`, `harness/agent/tracing.py`,
   `harness/agent/system_prompt.py`
-- Create: `harness/app.py` (Streamlit), `harness/.env.example` (`AWS_REGION`,
-  `BEDROCK_MODEL_ID`, `GOVERNED_CLI_CMD`, `GOVERNED_CLI_TOKEN` per persona,
-  `LANGFUSE_PUBLIC_KEY/SECRET_KEY/BASE_URL`)
-- Modify: `harness/pyproject.toml` (add boto3, langfuse, streamlit)
+- Create: `harness/app.py` (Streamlit), `harness/.env.example` (`MODEL_ID=openai.gpt-5.5`,
+  `OPENAI_BASE_URL` (bedrock-mantle), `OPENAI_API_KEY` (Bedrock API key),
+  `GOVERNED_CLI_CMD`, `GOVERNED_CLI_TOKEN` per persona,
+  `LANGFUSE_PUBLIC_KEY/SECRET_KEY/BASE_URL`, `DEMO_PASSPHRASE`)
+- Modify: `harness/pyproject.toml` (add openai, langfuse, streamlit)
 
 ## Implementation Steps
 
-1. `bedrock_client.py`: converse wrapper with Langfuse generation tracing; smoke-test with
-   a plain question (needs Phase 5A creds). Iterate on Haiku 4.5 if cost-nervous; ship on
-   Sonnet 5.
-2. `tools.py`: toolSpec definitions (`query_knowledge_graph`, `query_warehouse`,
+1. `llm_client.py`: OpenAI SDK client pointed at bedrock-mantle (base URL + Bedrock API
+   key from env), wrapped with `langfuse.openai`; smoke-test with a plain question (needs
+   Phase 5A key). Iterate on gpt-oss if cost-nervous; ship on GPT-5.5.
+2. `tools.py`: function-tool definitions (`query_knowledge_graph`, `query_warehouse`,
    `list_metrics`, `describe_metric`) mapping to `tn` subcommand flags + dispatcher
-   shelling out to `GOVERNED_CLI_CMD`; exit 1 with envelope → toolResult carrying
-   `error.code` + `error.details`; non-zero without parseable envelope → treat as
-   `INTERNAL` per contract.
-3. `loop.py`: converse loop until `stopReason != "tool_use"` or 10 iterations.
+   shelling out to `GOVERNED_CLI_CMD`; exit 1 with envelope → `function_call_output`
+   carrying `error.code` + `error.details`; non-zero without parseable envelope → treat
+   as `INTERNAL` per contract.
+3. `loop.py`: Responses loop — while output contains `function_call` items, execute and
+   append `function_call_output` items (echoing reasoning items per docs); stop on plain
+   text output or 10 iterations.
 4. `system_prompt.py`: governed-analyst prompt (KG-first, cite caveats/notices, VND/tỷ
    formatting).
 5. `app.py`: chat + persona dropdown (the four contract tokens from CONTRACT.md §1 —
@@ -111,9 +118,13 @@ Streamlit chat ── run_agent(question, persona)          harness/agent/
 
 ## Risk Assessment
 
-- **Converse block-format mistakes** (most likely bug) → code from AWS doc example first,
-  golden-log one full request/response pair into a fixture test.
+- **Responses-API item-format mistakes / reasoning-item handling** (most likely bug) →
+  code from the AWS + OpenAI doc examples first, golden-log one full request/response
+  pair into a fixture test; verify `previous_response_id` support on bedrock-mantle
+  before relying on it.
+- **`langfuse.openai` drop-in rejects the bedrock-mantle base URL or misses usage
+  fields** → fall back to manual `@observe(as_type="generation")` wrapping (the original
+  plan); the Langfuse research report has the exact call shapes.
 - **Model over-queries the warehouse without KG context** → tighten system prompt; if
   insufficient, force first tool call to `query_knowledge_graph` programmatically.
-- **Langfuse v4 keyword drift** (4-month-old SDK) → pin the version in pyproject; the
-  research report has the exact call shapes.
+- **Langfuse v4 keyword drift** (4-month-old SDK) → pin the version in pyproject.
