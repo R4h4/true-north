@@ -121,7 +121,7 @@ body {
 @media (max-width: 900px) {
   .main {
     grid-template-columns: 1fr;
-    grid-template-rows: 1fr 220px;
+    grid-template-rows: 1fr 320px;
     overflow-y: auto;
   }
   .chat-pane {
@@ -163,12 +163,101 @@ body {
   height: 100%;
 }
 
-/* User messages: Holistics-style light blue pill with ink text (the green
-   primary color stays on the send button only). Specificity must beat the
-   library's own .copilotKitMessage.copilotKitUserMessage rule. */
+/* Motion vocabulary (from the Claude Design workbench iteration): messages
+   fade up, KG nodes pop + pulse, edges fade in. */
+@keyframes tn-pop {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.82); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes tn-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(37, 155, 108, 0.3); }
+  55% { box-shadow: 0 0 0 7px rgba(37, 155, 108, 0); }
+}
+@keyframes tn-fade {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes tn-edge {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Empty-state hero: shown until the first user message */
+.chat-hero {
+  position: absolute;
+  inset: 0 0 140px;
+  /* .copilotKitChat is a flex-item sibling with z-index 30 - the hero must
+     sit above the (empty) message list but stays pointer-transparent */
+  z-index: 31;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  text-align: center;
+  padding: 24px;
+}
+
+.chat-hero h3 {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.chat-hero p {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-secondary);
+  max-width: 380px;
+}
+
+.chat-pane .copilotKitMessage {
+  animation: tn-fade 0.3s ease both;
+}
+
+/* User messages: Holistics-style light blue bubble with a tail corner, ink
+   text (the green primary color stays on the send button only). Specificity
+   must beat the library's own .copilotKitMessage.copilotKitUserMessage rule. */
 .chat-pane .copilotKitMessage.copilotKitUserMessage {
   background: var(--blue-tint);
   color: #21324e;
+  border-radius: 12px 12px 3px 12px;
+  max-width: 78%;
+  font-weight: 450;
+}
+
+/* Assistant prose: measured line length, calm rhythm */
+.chat-pane .copilotKitMessage.copilotKitAssistantMessage {
+  font-size: 13.5px;
+  line-height: 1.62;
+  color: var(--ink);
+  max-width: 640px;
+}
+
+/* Suggestion chips as pills (hover shifts to the brand green) */
+.chat-pane .copilotKitChatSuggestion,
+.chat-pane [class*="suggestion" i] button,
+.chat-pane button[class*="suggestion" i] {
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--ink-secondary);
+  border-radius: 99px;
+  padding: 6px 13px;
+  font-size: 12.5px;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: var(--shadow-card);
+  transition: border-color 150ms ease, color 150ms ease, background 150ms ease;
+}
+
+.chat-pane .copilotKitChatSuggestion:hover,
+.chat-pane [class*="suggestion" i] button:hover,
+.chat-pane button[class*="suggestion" i]:hover {
+  border-color: var(--green);
+  color: var(--green-dark);
+  background: var(--green-tint);
 }
 
 /* Input row: white field with a hairline border, green focus ring */
@@ -239,13 +328,48 @@ cpk-web-inspector {
   white-space: pre-wrap;
 }
 
-.kg-pane h2 {
+.kg-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 14px 16px 3px;
+}
+
+.kg-head h2 {
   font-size: 11px;
   font-weight: 600;
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  padding: 14px 16px 6px;
+}
+
+/* Access-posture badge: the governed policy made visible per persona */
+.kg-badge {
+  font-size: 10.5px;
+  font-weight: 600;
+  border-radius: 99px;
+  padding: 2px 9px;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.badge-green {
+  color: var(--green-dark);
+  background: var(--green-tint);
+  border-color: #c4e8d8;
+}
+
+.badge-amber {
+  color: var(--amber);
+  background: #fdf6e3;
+  border-color: #ecd9b0;
+}
+
+.badge-red {
+  color: var(--red);
+  background: var(--red-tint);
+  border-color: #f2c4cd;
 }
 
 .kg-pane .hint {
@@ -258,7 +382,90 @@ cpk-web-inspector {
 .kg-canvas {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+/* Node canvas: percent-positioned typed cards over an SVG edge layer */
+.kg-graph {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.kg-node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  animation: tn-pop 0.35s ease both;
+  z-index: 1;
+}
+
+.kg-node-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid;
+  box-shadow: var(--shadow-card);
+  white-space: nowrap;
+  max-width: 170px;
+}
+
+.kg-node-type {
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.kg-node-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kg-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 20px;
+  text-align: center;
+}
+
+.kg-empty p {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--muted);
+  max-width: 220px;
+}
+
+.kg-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  padding: 9px 16px;
+  border-top: 1px solid var(--border);
+  font-size: 10.5px;
+  color: var(--ink-secondary);
+}
+
+.kg-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.kg-legend-swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  border: 1px solid;
+  flex-shrink: 0;
 }
 
 /* Chart + HITL cards: white surface, hairline border, soft shadow —
@@ -290,12 +497,14 @@ cpk-web-inspector {
   color: var(--ink-secondary);
 }
 
-/* Agent step timeline: one compact row per governed tool call */
+/* Agent step timeline: compact rows sharing a continuous left rule, so a
+   multi-step turn reads as one "work" block */
 .tool-step {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 3px 0 3px 2px;
+  padding: 3px 0 3px 10px;
+  border-left: 2px solid var(--border);
   font-size: 12px;
   color: var(--ink-secondary);
 }
@@ -327,6 +536,14 @@ cpk-web-inspector {
 @keyframes step-spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-pane .copilotKitMessage,
+  .kg-node,
+  .kg-node-card {
+    animation: none !important;
   }
 }
 

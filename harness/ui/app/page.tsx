@@ -47,6 +47,32 @@ const PERSONAS = [
 
 // Conversation starters per persona - each exercises a governed path that
 // demos well for that role (KPI, trend, row filter, denial, ambiguity...).
+// Access posture per persona - mirrors the governed policy store (Postgres,
+// hydrated by governance.pg): Mai/Binh read everything, Duc is row-filtered
+// to South, Lan is denied cost & margin metrics.
+const ACCESS: Record<string, { label: string; hint: string; cls: string }> = {
+  mai: {
+    label: "Full model access",
+    hint: "Executive — every governed metric is readable.",
+    cls: "kg-badge badge-green",
+  },
+  duc: {
+    label: "Row filter · South",
+    hint: "Regional manager — every query is filtered to the South region.",
+    cls: "kg-badge badge-amber",
+  },
+  lan: {
+    label: "Finance metrics restricted",
+    hint: "Marketing — cost and margin metrics are hidden by policy.",
+    cls: "kg-badge badge-red",
+  },
+  binh: {
+    label: "Full model access",
+    hint: "Analyst — every governed metric in the Sales domain is readable.",
+    cls: "kg-badge badge-green",
+  },
+};
+
 const SUGGESTIONS: Record<string, string[]> = {
   mai: [
     "What is our total net revenue?",
@@ -102,6 +128,12 @@ function Workbench({ persona }: { persona: string }) {
   // Shared state streamed by the backend (STATE_SNAPSHOT events).
   const { state } = useCoAgent<{ kg_context?: KgGraph; thinking?: string }>({ name: "true-north" });
 
+  // The empty-state hero shows until the first question. onSubmitMessage fires
+  // inside the shared send path, so it covers typed messages AND suggestion
+  // clicks (the message hooks don't surface agent-runtime messages, and
+  // useCoAgent's `running` is true from mount when an agent is pinned).
+  const [asked, setAsked] = useState(false);
+
   // Conversation starters, rendered natively by CopilotChat until the first
   // user message; tailored per persona.
   useCopilotChatSuggestions(
@@ -153,20 +185,33 @@ function Workbench({ persona }: { persona: string }) {
     },
   });
 
+  const access = ACCESS[persona] ?? ACCESS.binh;
+
   return (
     <div className="main">
       <div className="chat-pane">
+        {!asked && (
+          <div className="chat-hero">
+            <BrandMark size={58} />
+            <h3>Ask your governed data anything</h3>
+            <p>
+              Every answer is resolved through the semantic layer — one definition of the truth,
+              per persona access policy.
+            </p>
+          </div>
+        )}
         <CopilotChat
-          labels={{
-            title: "True North",
-            initial: "Where do you want to steer today?",
-          }}
+          labels={{ title: "True North", initial: "" }}
           AssistantMessage={AssistantMessageWithThoughts}
+          onSubmitMessage={() => setAsked(true)}
         />
       </div>
       <div className="kg-pane">
-        <h2>What the agent knows so far</h2>
-        <p className="hint">Live knowledge-graph context · locked = exists but not accessible to your role</p>
+        <div className="kg-head">
+          <h2>Knowledge graph</h2>
+          <span className={access.cls}>{access.label}</span>
+        </div>
+        <p className="hint">{access.hint}</p>
         <div className="kg-canvas">
           <KgPanel graph={state?.kg_context} />
         </div>
