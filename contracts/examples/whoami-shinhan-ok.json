@@ -1,0 +1,21 @@
+{
+  "request": {"argv": ["tn", "--dataset", "shinhan", "whoami", "--token", "tok-exec-sujin"]},
+  "response": {
+    "contract_version": "0.3",
+    "ok": true,
+    "user": {"id": "u_sujin", "role": "executive"},
+    "result": {
+      "user": {"id": "u_sujin", "name": "Kim Su-jin", "role": "executive"},
+      "readable_tables": ["dim_channel", "dim_customer", "dim_partner", "dim_product", "fact_applications", "fact_collections", "fact_disbursements", "fact_loan_snapshots"],
+      "denied_metrics": [],
+      "permissions": [
+        {"type": "column_tokenized", "column": "fact_applications.customer_id", "display": "customer ids are stable tokens"},
+        {"type": "column_tokenized", "column": "fact_disbursements.customer_id", "display": "customer ids are stable tokens"},
+        {"type": "column_tokenized", "column": "dim_customer.customer_id", "display": "customer ids are stable tokens"}
+      ]
+    },
+    "metadata": {},
+    "warnings": [],
+    "error": null
+  }
+}
