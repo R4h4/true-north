@@ -1,0 +1,9 @@
+key: cancelled_excluded_from_approval
+statement: >-
+  Cancelled applications (decision = 'cancelled') are applicant withdrawals, not
+  underwriting decisions. approval_rate's denominator is approved + rejected only —
+  including cancelled in the denominator understates the true approval rate.
+severity: warning
+constrains:
+  - metric:approval_rate
+  - table:fact_applications

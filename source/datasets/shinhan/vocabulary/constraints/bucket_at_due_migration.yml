@@ -1,0 +1,12 @@
+key: bucket_at_due_migration
+statement: >-
+  fact_collections.bucket_at_due is the DPD bucket at the START of the collections
+  month; fact_loan_snapshots.dpd_bucket is the bucket at MONTH-END for the same
+  calendar month. A loan can migrate buckets mid-month, so the two differ for the same
+  loan/month — joining or comparing them as if they were the same value misstates roll
+  rates.
+severity: warning
+constrains:
+  - metric:collection_efficiency
+  - table:fact_collections
+  - table:fact_loan_snapshots

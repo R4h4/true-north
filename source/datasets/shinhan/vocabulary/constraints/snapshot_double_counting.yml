@@ -1,0 +1,13 @@
+key: snapshot_double_counting
+statement: >-
+  fact_loan_snapshots is a MONTH-END periodic snapshot — one row per loan per month.
+  Summing outstanding_principal or counting loan_id across multiple snapshot_months
+  double-counts the same loan/balance once per month it appears in. Always restrict to a
+  single snapshot_month before summing.
+severity: critical
+constrains:
+  - metric:enr
+  - metric:active_loans
+  - metric:npl_ratio
+  - metric:dpd30_plus_ratio
+  - table:fact_loan_snapshots

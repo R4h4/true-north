@@ -1,0 +1,10 @@
+key: portfolio-delinquency
+name: Portfolio delinquency
+definition: >-
+  How much of the loan book is behind on payments or has gone bad. Ambiguous: could mean
+  early-warning 30+ DPD, hard non-performing 90+ DPD, or origination-quality first-payment
+  default — each answers a different management question and has a different caveat.
+  Pick a variant and state it.
+aliases: [delinquency, overdue rate, bad debt, portfolio quality, no xau]
+variant_of: null
+measured_by: null

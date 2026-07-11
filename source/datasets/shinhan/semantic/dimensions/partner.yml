@@ -1,0 +1,8 @@
+key: partner
+name: POS partner
+description: >-
+  POS partner store. Only meaningful for pos_partner-channel loans — partner_id is NULL
+  for every other channel (digital_app, dsa, telesales), so joining or grouping by partner
+  silently excludes most cash loans and telesales/DSA-originated volume.
+type: entity
+source: dim_partner.partner_id

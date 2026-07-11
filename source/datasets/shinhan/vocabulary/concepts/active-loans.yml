@@ -1,0 +1,6 @@
+key: active-loans
+name: Active loans
+definition: Count of loans with status = active at a snapshot month — a portfolio-size volume measure, non-additive across months.
+aliases: [live loans, open loans, loan count active]
+variant_of: null
+measured_by: active_loans

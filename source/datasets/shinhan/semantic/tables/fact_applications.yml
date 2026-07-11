@@ -1,0 +1,4 @@
+key: fact_applications
+description: One row per loan application; decision is approved/rejected/cancelled. approved_amount is NULL unless approved.
+grain: application
+freshness_note: refreshed daily

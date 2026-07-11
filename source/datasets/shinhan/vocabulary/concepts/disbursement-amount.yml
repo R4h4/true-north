@@ -1,0 +1,8 @@
+key: disbursement-amount
+name: Disbursement amount
+definition: >-
+  Total principal disbursed to customers in a period — the growth/origination headline
+  number, distinct from ENR (which is the outstanding book, not the flow).
+aliases: [disbursements, loans booked, origination volume, growth]
+variant_of: null
+measured_by: disbursement_amount

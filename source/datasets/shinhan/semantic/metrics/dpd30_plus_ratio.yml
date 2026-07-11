@@ -1,0 +1,39 @@
+key: dpd30_plus_ratio
+name: 30+ DPD ratio
+short_description: Early-delinquency share of outstanding receivables.
+description: >
+  SUM(outstanding_principal WHERE dpd_bucket IN ('dpd_30_59','dpd_60_89','dpd_90_plus'))
+  / enr at the same snapshot month. CAVEAT: restructured loans (is_restructured = true)
+  have their DPD reset to 0 and land back in 'current' — so this ratio can understate
+  risk unless is_restructured is surfaced alongside it. A restructuring campaign will
+  make this ratio drop without the underlying repayment behavior improving.
+concept: dpd30-plus-ratio
+type: ratio
+unit: ratio
+version: "0.1"
+formula: "SUM(outstanding_principal WHERE dpd_bucket IN ('dpd_30_59','dpd_60_89','dpd_90_plus')) / SUM(outstanding_principal WHERE status='active')"
+time_dimension: month
+dimensions: [product, channel, province]
+compute:
+  measures:
+    dpd30_outstanding:
+      table: fact_loan_snapshots
+      expr: outstanding_principal
+      agg: sum
+      time_column: snapshot_month
+      filters:
+        - {column: dpd_bucket, operator: in, value: [dpd_30_59, dpd_60_89, dpd_90_plus]}
+      joins:
+        - {table: fact_disbursements, left_on: loan_id, right_on: loan_id}
+        - {table: dim_customer, left_on: fact_disbursements.customer_id, right_on: customer_id}
+    total_outstanding:
+      table: fact_loan_snapshots
+      expr: outstanding_principal
+      agg: sum
+      time_column: snapshot_month
+      filters:
+        - {column: status, operator: "=", value: active}
+      joins:
+        - {table: fact_disbursements, left_on: loan_id, right_on: loan_id}
+        - {table: dim_customer, left_on: fact_disbursements.customer_id, right_on: customer_id}
+  expr: "dpd30_outstanding / total_outstanding"

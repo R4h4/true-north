@@ -1,0 +1,6 @@
+key: avg-ticket-size
+name: Average ticket size
+definition: Average disbursed principal per loan — ratio of sums, not an average of per-loan averages.
+aliases: [ticket size, average loan size, average principal]
+variant_of: null
+measured_by: avg_ticket_size

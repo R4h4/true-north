@@ -1,0 +1,105 @@
+# Demo user fixtures for the shinhan tenant. Mirrors the retail tenant's
+# governance/fixtures/users.yaml structure (governance/POLICY.md). Tokens and observable
+# behavior are the contract surface; this file's structure is governance-internal.
+# customer_id (national-ID-like) is tokenized like the retail tenant's customer_id.
+
+users:
+  - token: tok-exec-sujin
+    user_id: u_sujin
+    name: "Kim Su-jin"
+    title: "CEO"
+    role: executive
+
+  - token: tok-risk-minh
+    user_id: u_minh
+    name: "Trần Đức Minh"
+    title: "Head of Risk"
+    role: risk
+
+  - token: tok-coll-thao
+    user_id: u_thao
+    name: "Lê Thu Thảo"
+    title: "Collections Manager, South"
+    role: collections_regional
+    attributes:
+      region: "South"
+
+  - token: tok-partner-long
+    user_id: u_long
+    name: "Phạm Hoàng Long"
+    title: "Head of Partnerships"
+    role: partnerships
+
+roles:
+  executive:
+    description: "Full metric and table access; customer identifiers still tokenized"
+    tables: all
+    row_filters: []
+    masked_columns: []
+    tokenized_columns:
+      - fact_applications.customer_id
+      - fact_disbursements.customer_id
+      - dim_customer.customer_id
+
+  risk:
+    description: "Full access including risk grade and restructuring flags; customer identifiers tokenized"
+    tables: all
+    row_filters: []
+    masked_columns: []
+    tokenized_columns:
+      - fact_applications.customer_id
+      - fact_disbursements.customer_id
+      - dim_customer.customer_id
+
+  collections_regional:
+    description: >-
+      Row-filtered to southern-province loans (disclosed row filter). Reads
+      loan snapshots and collections; no pricing (annual_rate masked).
+    tables:
+      - dim_customer
+      - dim_product
+      - dim_channel
+      - dim_partner
+      - fact_loan_snapshots
+      - fact_collections
+      - fact_disbursements
+      # fact_applications deliberately absent -> ACCESS_DENIED_TABLE (pre-decision data
+      # is not a collections concern)
+    row_filters:
+      # {region} does not exist as a physical column; South is resolved via province
+      # membership on dim_customer, mirroring the retail tenant's region row filter shape.
+      - tables: [fact_loan_snapshots, fact_collections, fact_disbursements]
+        predicate: "customer_id IN (SELECT customer_id FROM dim_customer WHERE province IN ('Ho Chi Minh City', 'Binh Duong', 'Dong Nai', 'Can Tho', 'Long An'))"
+        discloses_as: "dim_customer.province IN (South provinces)"
+    masked_columns:
+      - fact_disbursements.annual_rate
+    tokenized_columns:
+      - fact_applications.customer_id
+      - fact_disbursements.customer_id
+      - dim_customer.customer_id
+
+  partnerships:
+    description: >-
+      Applications, disbursements, and partner data; delinquency-related columns masked
+      (denial-with-disclosure: partnerships staff do not see loan performance).
+    tables:
+      - dim_customer
+      - dim_product
+      - dim_channel
+      - dim_partner
+      - fact_applications
+      - fact_disbursements
+      # fact_loan_snapshots and fact_collections deliberately absent -> ACCESS_DENIED_TABLE
+    row_filters: []
+    masked_columns:
+      - fact_applications.risk_grade
+      - fact_disbursements.annual_rate
+    tokenized_columns:
+      - fact_applications.customer_id
+      - fact_disbursements.customer_id
+      - dim_customer.customer_id
+
+tokenization:
+  scheme: hmac_sha256_prefix
+  prefix: cust_tok_
+  length: 12

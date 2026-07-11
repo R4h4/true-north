@@ -1,0 +1,6 @@
+key: income_band
+name: Income band
+description: Self-reported monthly income band.
+type: categorical
+source: dim_customer.income_band
+canonical_values: [under_10m, 10m_to_25m, over_25m]

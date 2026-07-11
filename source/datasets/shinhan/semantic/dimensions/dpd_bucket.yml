@@ -1,0 +1,10 @@
+key: dpd_bucket
+name: DPD bucket
+description: >-
+  Days-past-due bucket as of a month-end snapshot (fact_loan_snapshots.dpd_bucket).
+  Restructured loans (is_restructured = true) sit in 'current' immediately after their
+  DPD reset, even though the underlying risk has not resolved — see the dpd30_plus_ratio
+  metric caveat.
+type: categorical
+source: fact_loan_snapshots.dpd_bucket
+canonical_values: [current, dpd_1_29, dpd_30_59, dpd_60_89, dpd_90_plus]

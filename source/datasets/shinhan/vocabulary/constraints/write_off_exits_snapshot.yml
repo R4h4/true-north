@@ -1,0 +1,11 @@
+key: write_off_exits_snapshot
+statement: >-
+  Written-off loans stop appearing in fact_loan_snapshots the month after write-off —
+  they are absent, not zeroed or flagged. A write-off wave (planted 2025-06) makes
+  npl_ratio drop the following month with no improvement in underlying repayment
+  behavior. Always check for a write-off event before reading a period-over-period NPL
+  improvement as real portfolio-quality improvement.
+severity: critical
+constrains:
+  - metric:npl_ratio
+  - table:fact_loan_snapshots

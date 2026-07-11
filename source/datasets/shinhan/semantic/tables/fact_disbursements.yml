@@ -1,0 +1,4 @@
+key: fact_disbursements
+description: One row per disbursed loan, keyed off the approved application that funded it. A small share of approved applications never disburse (take-up gap).
+grain: loan (at disbursement)
+freshness_note: refreshed daily

@@ -1,0 +1,11 @@
+key: partner_null_outside_pos
+statement: >-
+  partner_id is NULL for every channel except pos_partner (digital_app, dsa, and
+  telesales loans never carry a partner). An INNER JOIN to dim_partner, or any partner
+  grouping without accounting for NULLs, silently drops all non-POS-partner volume —
+  most cash loans and all telesales/DSA originations.
+severity: critical
+constrains:
+  - dimension:partner
+  - table:fact_applications
+  - table:fact_disbursements

@@ -1,0 +1,40 @@
+key: npl_ratio
+name: NPL ratio
+short_description: Non-performing (90+ DPD) share of outstanding receivables.
+description: >
+  SUM(outstanding_principal WHERE dpd_bucket = 'dpd_90_plus') / enr at the same snapshot
+  month. Snapshot metric: pick one snapshot_month, do not sum across months (see enr).
+  CAVEAT: written-off loans leave fact_loan_snapshots entirely the month after write-off
+  — they are absent, not counted as non-performing — so a write-off wave makes npl_ratio
+  drop with no improvement in underlying portfolio quality. Always check for a
+  write-off event before reading a period-over-period NPL improvement as real.
+concept: npl-ratio
+type: ratio
+unit: ratio
+version: "0.1"
+formula: "SUM(outstanding_principal WHERE dpd_bucket='dpd_90_plus') / SUM(outstanding_principal WHERE status='active')"
+time_dimension: month
+dimensions: [product, channel, province]
+compute:
+  measures:
+    npl_outstanding:
+      table: fact_loan_snapshots
+      expr: outstanding_principal
+      agg: sum
+      time_column: snapshot_month
+      filters:
+        - {column: dpd_bucket, operator: "=", value: dpd_90_plus}
+      joins:
+        - {table: fact_disbursements, left_on: loan_id, right_on: loan_id}
+        - {table: dim_customer, left_on: fact_disbursements.customer_id, right_on: customer_id}
+    total_outstanding:
+      table: fact_loan_snapshots
+      expr: outstanding_principal
+      agg: sum
+      time_column: snapshot_month
+      filters:
+        - {column: status, operator: "=", value: active}
+      joins:
+        - {table: fact_disbursements, left_on: loan_id, right_on: loan_id}
+        - {table: dim_customer, left_on: fact_disbursements.customer_id, right_on: customer_id}
+  expr: "npl_outstanding / total_outstanding"
