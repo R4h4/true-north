@@ -19,10 +19,12 @@ DEFAULT_MANTLE_MODEL_ID = "openai.gpt-5.5"
 
 # Reasoning summaries stream as AG-UI Reasoning events (ag-ui-strands maps
 # strands' reasoningText deltas), making the agent's planning visible in the
-# UI. Summaries only stream when an effort level is set explicitly; 'low'
-# keeps the tool loop fast. The Responses provider drops reasoning blocks
-# from follow-up request history (warning only), so tool loops are unaffected.
-_PARAMS = {"reasoning": {"effort": "low", "summary": "auto"}}
+# UI. Summaries only stream when an effort level is set explicitly, and at
+# 'low' the model emits them only sporadically - 'medium' produces them
+# reliably, which the in-chat Thoughts panel depends on. The Responses
+# provider drops reasoning blocks from follow-up request history (warning
+# only), so tool loops are unaffected.
+_PARAMS = {"reasoning": {"effort": "medium", "summary": "auto"}}
 
 
 def build_model() -> OpenAIResponsesModel:

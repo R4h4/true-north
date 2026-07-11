@@ -193,29 +193,49 @@ cpk-web-inspector {
   min-height: 0;
 }
 
-/* Live reasoning stream at the top of the side pane */
-.thinking-box {
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
-  flex-shrink: 0;
+/* In-chat collapsible reasoning ("Thoughts"), ChatGPT-style: a muted toggle
+   row that expands to an indented, left-ruled excerpt of the reasoning */
+.thoughts {
+  margin: 2px 0 8px;
 }
 
-.thinking-box h2 {
-  font-size: 11px;
-  font-weight: 600;
+.thoughts-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  padding: 4px 2px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
   color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  padding: 14px 16px 6px;
+  cursor: pointer;
+  transition: color 150ms ease;
 }
 
-.thinking-scroll {
-  max-height: 150px;
-  overflow-y: auto;
-  padding: 0 16px 12px;
-  font-size: 12px;
-  line-height: 1.55;
+.thoughts-toggle:hover {
   color: var(--ink-secondary);
+}
+
+.thoughts-toggle .chev {
+  flex-shrink: 0;
+  transition: transform 150ms ease;
+}
+
+.thoughts-toggle .chev.open {
+  transform: rotate(90deg);
+}
+
+.thoughts-body {
+  max-height: 240px;
+  overflow-y: auto;
+  margin: 2px 0 4px 4px;
+  padding: 2px 4px 2px 12px;
+  border-left: 2px solid var(--border-strong);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--muted);
   white-space: pre-wrap;
 }
 

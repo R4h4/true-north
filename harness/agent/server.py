@@ -116,6 +116,19 @@ class GovernedStrandsAgent(StrandsAgent):
             )
 
         async for event in super().run(input_data):
+            if isinstance(event, StateSnapshotEvent):
+                # The base class emits snapshots from its own state store
+                # (tool-behavior results + a terminal flush) that don't know
+                # about `thinking` - and a snapshot REPLACES client state, so
+                # a missing key erases the reasoning mid-conversation.
+                merged = dict(event.snapshot or {})
+                merged["thinking"] = _thinking_by_thread.get(thread_id, "")
+                merged.setdefault(
+                    "kg_context", _graphs_by_thread.get(thread_id) or empty_graph()
+                )
+                event = StateSnapshotEvent(
+                    type=EventType.STATE_SNAPSHOT, snapshot=merged
+                )
             yield event
             if not cleared:
                 # First event was RUN_STARTED: clear the previous turn's text.

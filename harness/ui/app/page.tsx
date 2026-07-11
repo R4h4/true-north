@@ -6,7 +6,11 @@ import {
   useCopilotAction,
   useCopilotChatSuggestions,
 } from "@copilotkit/react-core";
-import { CopilotChat } from "@copilotkit/react-ui";
+import {
+  AssistantMessage as CopilotAssistantMessage,
+  CopilotChat,
+  type AssistantMessageProps,
+} from "@copilotkit/react-ui";
 import "@copilotkit/react-ui/styles.css";
 import { useEffect, useRef, useState } from "react";
 import { ChartView, type ChartPayload } from "../components/chart-view";
@@ -123,20 +127,63 @@ function BrandMark() {
   );
 }
 
-// Live reasoning-summary stream (mirrored into shared state by the server,
-// since CopilotKit's chat drops AG-UI reasoning events). Auto-follows.
-function ThinkingBox({ text }: { text: string }) {
-  const box = useRef<HTMLDivElement>(null);
+// ChatGPT-style collapsible reasoning block: expanded and auto-following
+// while the agent thinks, auto-collapses to a "Thoughts" toggle when done.
+function Thoughts({ text, live }: { text: string; live: boolean }) {
+  // null = automatic (follow `live`); true/false = user override.
+  const [open, setOpen] = useState<boolean | null>(null);
+  const expanded = open ?? live;
+  const body = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (box.current) box.current.scrollTop = box.current.scrollHeight;
-  }, [text]);
+    if (live && expanded && body.current) body.current.scrollTop = body.current.scrollHeight;
+  }, [text, live, expanded]);
   return (
-    <div className="thinking-box">
-      <h2>Agent reasoning</h2>
-      <div className="thinking-scroll" ref={box}>
-        {text.replace(/\*\*/g, "")}
-      </div>
+    <div className="thoughts">
+      <button className="thoughts-toggle" onClick={() => setOpen(!expanded)}>
+        <svg
+          width="10"
+          height="10"
+          viewBox="0 0 10 10"
+          className={expanded ? "chev open" : "chev"}
+          aria-hidden="true"
+        >
+          <path d="M3 1.5 7 5 3 8.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        {live ? "Thinking…" : "Thoughts"}
+      </button>
+      {expanded && (
+        <div className="thoughts-body" ref={body}>
+          {text.replace(/\*\*/g, "")}
+        </div>
+      )}
     </div>
+  );
+}
+
+// The reasoning block anchors to the FIRST assistant message after the last
+// user message, so it leads the turn like ChatGPT's "Thought for Ns".
+function isThoughtsAnchor(message?: { id?: string }, messages?: { id?: string; role?: string }[]): boolean {
+  if (!message?.id || !messages) return false;
+  let lastUser = -1;
+  messages.forEach((m, i) => {
+    if (m.role === "user") lastUser = i;
+  });
+  const firstAssistant = messages.slice(lastUser + 1).find((m) => m.role === "assistant");
+  return firstAssistant?.id === message.id;
+}
+
+function AssistantMessageWithThoughts(props: AssistantMessageProps) {
+  // `running` covers the whole agent run - the anchor message itself finishes
+  // long before the reasoning does (tool loop), so per-message isGenerating
+  // would collapse the block mid-thought.
+  const { state, running } = useCoAgent<{ thinking?: string }>({ name: "true-north" });
+  const thinking = (state?.thinking ?? "").trim();
+  const anchor = isThoughtsAnchor(props.message as any, props.messages as any);
+  return (
+    <>
+      {anchor && thinking && <Thoughts text={thinking} live={running} />}
+      <CopilotAssistantMessage {...props} />
+    </>
   );
 }
 
@@ -209,10 +256,10 @@ function Workbench({ persona }: { persona: string }) {
             title: "True North",
             initial: "Where do you want to steer today?",
           }}
+          AssistantMessage={AssistantMessageWithThoughts}
         />
       </div>
       <div className="kg-pane">
-        {(state?.thinking ?? "").trim() && <ThinkingBox text={state!.thinking!} />}
         <h2>What the agent knows so far</h2>
         <p className="hint">Live knowledge-graph context · locked = exists but not accessible to your role</p>
         <div className="kg-canvas">
