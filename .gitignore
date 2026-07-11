@@ -3,6 +3,11 @@ __pycache__/
 *.duckdb
 .DS_Store
 
+# Secrets: env files are always local
+.env
+.env.*
+!.env.example
+
 # Generated data: keep the directory, ignore its parquet contents
 **/data/parquet/*
 !**/data/parquet/.gitkeep
