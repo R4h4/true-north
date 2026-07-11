@@ -18,9 +18,10 @@ the checkpoints where the tracks touch.
 ## Requirements
 
 - Functional: a real `governed-cli` implementing the Phase 1 contract — token resolution
-  from `contracts/personas.json`, warehouse queries with row/column/table governance
-  applied, Cypher against a Neo4j populated by semantic-layer ingest (metrics, dimensions,
-  glossary, **permission metadata**).
+  from `contracts/personas.json`, **metrics-DSL requests compiled to SQL by the semantic
+  layer** (raw SQL is never exposed) with row/column/table governance applied, a
+  `metrics` discovery listing, and Cypher against a Neo4j populated by semantic-layer
+  ingest (metrics, dimensions, glossary, **permission metadata**).
 - Non-functional: conformance suite (`contracts/conformance/`) green, unmodified except by
   joint PR; Neo4j runs from the `infra/` docker-compose (Phase 5) or a compatible local
   container (`neo4j:5-community`, bolt on 7687).

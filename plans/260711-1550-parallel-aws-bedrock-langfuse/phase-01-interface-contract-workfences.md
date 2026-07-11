@@ -29,8 +29,24 @@ adjust in-session, then freeze:
 ```bash
 governed-cli --token TOKEN whoami                 # → persona + permissions JSON
 governed-cli --token TOKEN graph  "<cypher>"      # → knowledge-graph surface
-governed-cli --token TOKEN query  "<select-sql>"  # → warehouse surface (read-only)
+governed-cli --token TOKEN metrics                # → list governed metrics + dimensions
+governed-cli --token TOKEN query  '<dsl-json>'    # → warehouse surface (metrics DSL)
 ```
+
+**The warehouse surface is a metrics DSL, NOT raw SQL** (decided by Phong 2026-07-11:
+exposing SQL directly to the warehouse is dangerous and defeats the governance story —
+the agent requests governed metrics; the semantic layer owns the SQL). Proposed DSL v0
+request, deliberately tiny:
+
+```json
+{"metric": "net_revenue",
+ "dimensions": ["channel"],
+ "filters": {"province": "Ho Chi Minh City"},
+ "time": {"from": "2025-01-01", "to": "2025-12-31", "grain": "month"}}
+```
+
+v0 scope: one metric per request, group-by dimensions, equality filters, date range +
+grain. Anything fancier (metric arithmetic, top-N, or-filters) is a v1 changelog entry.
 
 JSON envelope on stdout, exit code 0/1, logs to stderr:
 
@@ -63,8 +79,10 @@ where mock/real divergence would surface silently on integration day):
 - **`notices` structure**: machine-readable, e.g.
   `{"type": "column_masked", "column": "customer_name"}` — free prose can't be
   conformance-tested.
-- **SQL vs DSL for `query` is decided in this session, not deferred** — the LLM authors
-  the queries, so tool specs and the system prompt are rework if this lands late.
+- **The DSL v0 request schema** — field names, filter semantics, allowed grains, and the
+  error for an unknown metric/dimension (`INVALID_QUERY` with the list of valid names, so
+  the agent can self-correct). The LLM fills this schema via tool inputSchema, so it must
+  be frozen here, not discovered later.
 
 Personas (fixture `contracts/personas.json`, static tokens are fine — this is a demo):
 
@@ -89,8 +107,8 @@ Personas (fixture `contracts/personas.json`, static tokens are fine — this is 
    above, including defaults for every "MUST freeze" bullet. The session ratifies a draft;
    it does not design from a blank page — that's how the 3h timebox holds.
 2. Joint session (timebox 3h): walk the draft; decide the contested points — CLI name,
-   raw SQL vs semantic-layer DSL for `query` (Karsten's call since he owns the DSL; if
-   DSL, add a `metrics`/`dimensions` discovery subcommand), and the KG schema shape.
+   the DSL v0 request schema (Karsten leads — he owns the semantic layer that compiles
+   it), the `metrics` discovery output shape, and the KG schema shape.
 3. Write `docs/governed-cli-contract.md`; both commit-approve the same PR.
 4. Commit `contracts/personas.json` + golden examples. Golden examples assert **envelope
    structure and error codes**, not row values — value asserts would break when dataset
@@ -111,9 +129,9 @@ Personas (fixture `contracts/personas.json`, static tokens are fine — this is 
 
 ## Risk Assessment
 
-- **Raw SQL vs DSL lands late** → not acceptable to defer: the LLM *authors* the query
-  strings, so tool descriptions and the system prompt depend on the choice. If truly
-  deadlocked, contract v0 = raw SQL (matches the existing read-only engine) and a DSL
-  becomes v1 with a planned prompt/toolspec rework budgeted.
+- **DSL scope creep in the session** → v0 stays at one-metric/group-by/equality-filter/
+  time-range; every extension is a changelog entry later. A tiny DSL the semantic layer
+  can actually compile beats an expressive one that slips the week. (Raw SQL passthrough
+  is explicitly off the table — user decision 2026-07-11.)
 - **Spec bikeshedding blows the timebox** → the pre-drafted text is the default;
   silence = accepted.

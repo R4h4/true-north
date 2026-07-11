@@ -49,10 +49,15 @@ Streamlit chat ── run_agent(question, persona)          harness/agent/
   `propagate_attributes` for session/user. No Bedrock auto-instrumentation exists —
   wrapping is manual. Cost tracking: log token counts now; optional custom model pricing
   in Langfuse dashboard later.
+- `query_warehouse` tool takes the **structured DSL v0 fields** (metric, dimensions,
+  filters, time) as its inputSchema — the model never writes SQL; Converse enforces the
+  shape. `INVALID_QUERY` responses list valid metric/dimension names so the model
+  self-corrects in the next turn. A third lightweight tool `list_metrics` (→ `metrics`
+  subcommand) covers discovery when the KG route is overkill.
 - System prompt encodes the governed-BI stance: consult KG for metric definitions first;
-  respect canonical vocab (channels `in_store/web/app/b2b`, long-form provinces); state
-  caveats (gross vs net of returns, B2B inclusion) — the 8 traps in `source/data/TRAPS.md`
-  are the checklist.
+  pick governed metrics rather than improvising math; respect canonical vocab (channels
+  `in_store/web/app/b2b`, long-form provinces); state caveats (gross vs net of returns,
+  B2B inclusion) — the 8 traps in `source/data/TRAPS.md` are the checklist.
 
 ## Related Code Files
 
@@ -69,8 +74,10 @@ Streamlit chat ── run_agent(question, persona)          harness/agent/
 1. `bedrock_client.py`: converse wrapper with Langfuse generation tracing; smoke-test with
    a plain question (needs Phase 5A creds). Iterate on Haiku 4.5 if cost-nervous; ship on
    Sonnet 5.
-2. `tools.py`: toolSpec definitions + dispatcher shelling out to `GOVERNED_CLI_CMD`;
-   error envelope → toolResult with `status: error` so the model can react.
+2. `tools.py`: toolSpec definitions (`query_knowledge_graph(cypher)`,
+   `query_warehouse(metric, dimensions, filters, time)`, `list_metrics()`) + dispatcher
+   shelling out to `GOVERNED_CLI_CMD`; error envelope → toolResult with `status: error`
+   so the model can react.
 3. `loop.py`: converse loop until `stopReason != "tool_use"` or 10 iterations.
 4. `system_prompt.py`: governed-analyst prompt (KG-first, cite caveats/notices, VND/tỷ
    formatting).

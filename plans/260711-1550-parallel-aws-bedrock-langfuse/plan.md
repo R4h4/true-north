@@ -106,3 +106,8 @@ Phase 5A (Phong, day 0-1, parallel)
 2. **Timeline ~1 week** — day-numbered schedule stands as written.
 3. **Phong's personal/company AWS account** — he controls IAM; Anthropic use-case form + Sonnet 5 quota-increase requests submitted immediately (day 0, before anything else).
 4. "Karsen" = Karsten (README spelling) — assumed, not re-confirmed.
+5. **Warehouse surface is a metrics DSL, not raw SQL** (Phong, 2026-07-11) — exposing SQL
+   directly to the warehouse is dangerous and defeats the governance story. The agent
+   requests governed metrics (structured tool args); the semantic layer owns all SQL.
+   Contract adds a `metrics` discovery subcommand; DSL v0 = one metric, group-by
+   dimensions, equality filters, time range/grain.

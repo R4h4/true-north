@@ -16,8 +16,9 @@ suite that later proves mock and real CLI are interchangeable.
 
 ## Requirements
 
-- Functional: implements `whoami`, `graph`, `query` per contract; all 3 personas behave
-  differently; permission denials and notices produced per `contracts/personas.json`.
+- Functional: implements `whoami`, `graph`, `metrics`, `query` (metrics DSL) per
+  contract; all 3 personas behave differently; permission denials and notices produced
+  per `contracts/personas.json`.
 - Non-functional: no Neo4j dependency (canned graph answers); realistic enough that
   swapping to the real CLI changes zero harness code (only the `GOVERNED_CLI_CMD` env var).
 
@@ -28,13 +29,18 @@ suite that later proves mock and real CLI are interchangeable.
   follow the KG schema frozen in the Phase 1 contract** — the agent's Cypher habits formed
   against the mock must survive contact with the real graph. Unknown-but-valid Cypher →
   "no results" success; malformed Cypher → `INVALID_QUERY` (golden example for both).
-- `query` surface: the mock owns a ~20-line read-only DuckDB reader over
-  `source/data/parquet/*.parquet` (generated **data** is the stable contract, defined by
-  `schema.py`; do NOT import `source/` Python modules — Karsten refactors those internals
-  in Phase 4, and a cross-fence import lets him break this mock without violating any
-  fence rule). On top, apply demo governance from `personas.json`: row filter (province
-  for `tok_hcmc_manager`), column masking per the contract's mask semantics (→ structured
-  `notices`), table deny (`dim_customers` for `tok_analyst` → `PERMISSION_DENIED`).
+- `query` surface: a naive compiler from DSL v0 requests to DuckDB SQL over
+  `source/data/parquet/*.parquet` — a dict of metric-name → SQL template plus group-by/
+  filter/time clauses (~50–80 lines, NOT a query planner; 3–4 metrics suffice). Generated
+  **data** is the stable contract, defined by `schema.py`; do NOT import `source/` Python
+  modules — Karsten refactors those internals in Phase 4, and a cross-fence import lets
+  him break this mock without violating any fence rule. On top, apply demo governance
+  from `personas.json`: row filter (province for `tok_hcmc_manager`), column masking per
+  the contract's mask semantics (→ structured `notices`), metric/table deny (a metric
+  backed by `dim_customers` for `tok_analyst` → `PERMISSION_DENIED`). Unknown
+  metric/dimension → `INVALID_QUERY` listing valid names (per contract).
+- `metrics` surface: dump the mock's metric/dimension registry — same shape the real
+  semantic layer will emit.
 - Conformance tests parametrized by `GOVERNED_CLI_CMD`, asserting the golden examples from
   `contracts/examples/` plus envelope/exit-code invariants. Same suite runs against the
   real CLI in Phase 4/6.
@@ -54,9 +60,10 @@ suite that later proves mock and real CLI are interchangeable.
 1. Scaffold `harness/` as a uv workspace member; verify `uv run python -m mock_cli --help`
    from `harness/`.
 2. Implement token resolution from `contracts/personas.json` (`UNKNOWN_TOKEN` error path).
-3. Implement the mock's own parquet reader + governance shim (filter/mask/deny +
-   structured notices). Dev data: `cd source && uv run python -m generator.generate
-   --scale tiny --seed 42` (seconds; no dependency on the demo-data plan's full-scale run).
+3. Implement the DSL-v0-to-DuckDB compiler + governance shim (filter/mask/deny +
+   structured notices) + `metrics` registry dump. Dev data: `cd source && uv run python
+   -m generator.generate --scale tiny --seed 42` (seconds; no dependency on the demo-data
+   plan's full-scale run).
 4. Implement `graph` canned fixtures: enough Cypher patterns to cover metric lookup
    ("what does revenue mean" → gross/net/B2B caveats from TRAPS.md), dimension vocab
    (canonical channel/province values), and permission metadata per persona.
@@ -67,7 +74,8 @@ suite that later proves mock and real CLI are interchangeable.
 
 - [ ] Conformance suite green against the mock.
 - [ ] Same question via `tok_hcmc_manager` vs `tok_ceo` returns different row counts.
-- [ ] `tok_analyst` querying `dim_customers` gets `PERMISSION_DENIED` with a helpful message.
+- [ ] `tok_analyst` requesting a customer-backed metric gets `PERMISSION_DENIED` with a
+  helpful message; an unknown metric gets `INVALID_QUERY` listing valid names.
 - [ ] Karsten has reviewed the conformance suite (it constrains his Phase 4).
 
 ## Risk Assessment
