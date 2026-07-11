@@ -12,9 +12,13 @@ import {
   type AssistantMessageProps,
 } from "@copilotkit/react-ui";
 import "@copilotkit/react-ui/styles.css";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
+import { AskUserCard } from "../components/ask-user-card";
+import { BrandMark } from "../components/brand-mark";
 import { ChartView, type ChartPayload } from "../components/chart-view";
 import { KgPanel, type KgGraph } from "../components/kg-panel";
+import { Thoughts } from "../components/thoughts";
+import { ToolStep } from "../components/tool-step";
 
 function safeParse(s: string): any {
   try {
@@ -66,99 +70,6 @@ const SUGGESTIONS: Record<string, string[]> = {
   ],
 };
 
-
-// Human-readable labels for the governed tools; the step timeline renders
-// only tools listed here (render_chart / ask_user have their own renderers).
-const TOOL_STEPS: Record<string, string> = {
-  get_kg_schema: "Loading knowledge-graph schema",
-  resolve_term: "Resolving business term",
-  get_metric_context: "Loading metric context",
-  check_metric_access: "Checking metric access",
-  list_metrics: "Listing governed metrics",
-  describe_metric: "Inspecting metric definition",
-  query_warehouse: "Running governed query",
-};
-
-const ARG_KEYS = ["term", "metric_key", "metric_keys", "metric", "group_by", "time_grain", "filter", "start", "end"];
-
-function argSummary(args: any): string {
-  if (!args || typeof args !== "object") return "";
-  const parts: string[] = [];
-  for (const key of ARG_KEYS) {
-    const v = args[key];
-    if (v && String(v).trim()) parts.push(`${key}=${Array.isArray(v) ? v.join(",") : v}`);
-  }
-  return parts.join("  ");
-}
-
-function StepCheck() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-      <path d="M2.5 6.5 5 9l4.5-6" stroke="#259b6c" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-// One row of the agent's visible act loop: tool choice + arguments, live.
-function ToolStep({ name, args, status }: { name: string; args: any; status: string }) {
-  const label = TOOL_STEPS[name];
-  if (!label) return <></>;
-  return (
-    <div className="tool-step">
-      {status === "complete" ? <StepCheck /> : <span className="step-spinner" aria-label="running" />}
-      <span className="step-label">{label}</span>
-      <span className="step-args">{argSummary(args)}</span>
-    </div>
-  );
-}
-
-// Compass-in-hexagon brand mark, drawn in the brand green.
-function BrandMark() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M12 2.5 20.2 7.25v9.5L12 21.5 3.8 16.75v-9.5L12 2.5Z"
-        stroke="#259b6c"
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
-      <path d="M12 6.5 14 12l-2 5.5L10 12l2-5.5Z" fill="#259b6c" />
-    </svg>
-  );
-}
-
-// ChatGPT-style collapsible reasoning block: expanded and auto-following
-// while the agent thinks, auto-collapses to a "Thoughts" toggle when done.
-function Thoughts({ text, live }: { text: string; live: boolean }) {
-  // null = automatic (follow `live`); true/false = user override.
-  const [open, setOpen] = useState<boolean | null>(null);
-  const expanded = open ?? live;
-  const body = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (live && expanded && body.current) body.current.scrollTop = body.current.scrollHeight;
-  }, [text, live, expanded]);
-  return (
-    <div className="thoughts">
-      <button className="thoughts-toggle" onClick={() => setOpen(!expanded)}>
-        <svg
-          width="10"
-          height="10"
-          viewBox="0 0 10 10"
-          className={expanded ? "chev open" : "chev"}
-          aria-hidden="true"
-        >
-          <path d="M3 1.5 7 5 3 8.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-        {live ? "Thinking…" : "Thoughts"}
-      </button>
-      {expanded && (
-        <div className="thoughts-body" ref={body}>
-          {text.replace(/\*\*/g, "")}
-        </div>
-      )}
-    </div>
-  );
-}
 
 // The reasoning block anchors to the FIRST assistant message after the last
 // user message, so it leads the turn like ChatGPT's "Thought for Ns".
@@ -212,18 +123,12 @@ function Workbench({ persona }: { persona: string }) {
       { name: "options", type: "string[]", required: true },
     ],
     renderAndWaitForResponse: ({ args, respond, status }) => (
-      <div className="ask-user-card">
-        <p>{args.question}</p>
-        {status !== "complete" && respond ? (
-          (args.options ?? []).map((option: string) => (
-            <button key={option} onClick={() => respond(option)}>
-              {option}
-            </button>
-          ))
-        ) : (
-          <span className="answered">✓ answered</span>
-        )}
-      </div>
+      <AskUserCard
+        question={args.question ?? ""}
+        options={args.options ?? []}
+        answered={status === "complete" || !respond}
+        onSelect={respond}
+      />
     ),
   });
 
