@@ -3,7 +3,6 @@ statement: >-
   All amounts are raw VND stored as int64; management reports in tỷ (billions) — divide by 1e9 when the user speaks in billions. Use the fact's transacted amounts (net_amount, cost_amount), never dim_sku list_price/unit_cost, for realized revenue and margin.
 severity: warning
 constrains:
-  - metric:net_revenue
   - metric:gmv_gross
-  - metric:gross_margin
-  - metric:basket_value_avg
+  - table:fact_sales_lines
+  - table:dim_sku

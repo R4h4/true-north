@@ -108,3 +108,18 @@ class FakeRecord:
 
     def items(self):
         return self._mapping.items()
+
+
+class _Fakes:
+    Node = FakeNode
+    Rel = FakeRel
+    Path = FakePath
+    Record = FakeRecord
+
+
+@pytest.fixture(scope="session")
+def fakes():
+    """Duck-typed neo4j graph entity constructors, provided as a fixture so tests need
+    no cross-package import (the tests dir is intentionally not a package — its name
+    would collide with governance/tests)."""
+    return _Fakes
