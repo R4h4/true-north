@@ -38,54 +38,37 @@ def resolve_dsn(dsn: str | None = None) -> str:
     return dsn or os.environ.get("TN_PG_DSN") or DEFAULT_DSN
 
 
-# --- schema bootstrap -------------------------------------------------------
+# --- schema migrations ------------------------------------------------------
+#
+# Alembic owns the DDL (ADR 0010). ``roles.definition`` holds the full role dict
+# as JSONB — description, tables grant, row_filters, and the masked/tokenized/
+# transformed column lists. LIST ORDER is disclosure order (masked/tokenized grant
+# order is contractual), and JSONB preserves array order, so the reconstructed
+# Policy matches the YAML one. See governance/migrations/versions/.
 
-# ``roles.definition`` holds the full role dict as JSONB — description, tables
-# grant, row_filters, and the masked/tokenized/transformed column lists. LIST
-# ORDER is disclosure order (masked/tokenized grant order is contractual), and
-# JSONB preserves array order, so the reconstructed Policy matches the YAML one.
-_SCHEMA = """
-CREATE TABLE IF NOT EXISTS roles (
-    role        text PRIMARY KEY,
-    definition  jsonb NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS users (
-    user_id     text PRIMARY KEY,
-    token       text NOT NULL UNIQUE,
-    name        text NOT NULL,
-    title       text NOT NULL DEFAULT '',
-    role        text NOT NULL REFERENCES roles(role),
-    attributes  jsonb NOT NULL DEFAULT '{}'::jsonb
-);
-
-CREATE TABLE IF NOT EXISTS policy_config (
-    key    text PRIMARY KEY,
-    value  jsonb NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS audit_log (
-    id                bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    ts                timestamptz NOT NULL DEFAULT now(),
-    command           text NOT NULL,
-    token             text,
-    user_id           text REFERENCES users(user_id),
-    role              text,
-    request           jsonb,
-    executed_query    text,
-    ok                boolean NOT NULL,
-    error_code        text,
-    contract_version  text
-);
-"""
+_ALEMBIC_INI = REPO_ROOT / "governance" / "alembic.ini"
 
 
 def _connect(dsn: str | None = None) -> psycopg.Connection:
     return psycopg.connect(resolve_dsn(dsn))
 
 
-def bootstrap_schema(conn: psycopg.Connection) -> None:
-    conn.execute(_SCHEMA)
+def migrate(dsn: str | None = None) -> None:
+    """Run `alembic upgrade head` programmatically (deploy-time only).
+
+    Alembic (and its SQLAlchemy dependency) is imported HERE, inside the loader
+    path, never at module scope — the runtime `tn` CLI imports governance.pg but
+    must not pull SQLAlchemy onto the per-invocation hot path. env.py resolves the
+    DSN via resolve_dsn(), so TN_PG_DSN is honored; the override below only matters
+    when a caller passes an explicit dsn.
+    """
+    from alembic import command
+    from alembic.config import Config
+
+    cfg = Config(str(_ALEMBIC_INI))
+    if dsn is not None:
+        cfg.set_main_option("sqlalchemy.url", resolve_dsn(dsn))
+    command.upgrade(cfg, "head")
 
 
 # --- deploy-time loader: YAML -> Postgres -----------------------------------
@@ -102,9 +85,9 @@ def load_policy_to_db(dsn: str | None = None, users_yaml: Path = USERS_YAML) -> 
     users = doc.get("users") or []
     tokenization = doc.get("tokenization") or {}
 
-    with _connect(dsn) as conn:
-        bootstrap_schema(conn)
+    migrate(dsn)
 
+    with _connect(dsn) as conn:
         # roles first (users FK-reference them)
         for role, rdef in roles.items():
             conn.execute(
