@@ -403,6 +403,11 @@ body {
   transition: border-color 150ms ease, box-shadow 150ms ease;
 }
 
+/* keep the input (and its focus ring) clear of the pane's bottom edge */
+.chat-pane:not(.empty) .copilotKitInputContainer {
+  padding-bottom: 14px;
+}
+
 .chat-pane .copilotKitInput:focus-within {
   border-color: var(--accent);
   box-shadow: 0 0 0 3.5px rgba(124, 92, 240, 0.22);
@@ -410,8 +415,8 @@ body {
 
 .chat-pane .copilotKitInput textarea {
   font-size: 15px;
-  /* roomy three-line resting height; still auto-grows past it */
-  min-height: 72px;
+  /* roomy two-line resting height; still auto-grows past it */
+  min-height: 48px;
 }
 
 /* Send button: muted glyph while the field is empty, filled accent circle
