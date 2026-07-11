@@ -1,5 +1,13 @@
 "use client";
 
+import {
+  siClickhouse,
+  siDatabricks,
+  siGooglebigquery,
+  siMysql,
+  siPostgresql,
+  siSnowflake,
+} from "simple-icons";
 import { useState } from "react";
 import { BrandMark } from "./brand-mark";
 
@@ -25,13 +33,14 @@ export function EmptyStateGreeting() {
   );
 }
 
+// Real brand marks from simple-icons (24x24 paths + official brand color).
 const SOURCES = [
-  { id: "pg", label: "Postgres", mono: "Pg", bg: "var(--blue-tint)", fg: "#3b5a8a" },
-  { id: "my", label: "MySQL", mono: "My", bg: "#fdf6e3", fg: "var(--amber)" },
-  { id: "bq", label: "BigQuery", mono: "BQ", bg: "var(--blue-tint)", fg: "#3b5a8a" },
-  { id: "sf", label: "Snowflake", mono: "Sf", bg: "var(--surface-subtle)", fg: "var(--ink-secondary)" },
-  { id: "rs", label: "Redshift", mono: "Rs", bg: "var(--red-tint)", fg: "var(--red)" },
-  { id: "dw", label: "Warehouse", mono: "DW", bg: "var(--green-tint)", fg: "var(--green-dark)" },
+  { icon: siPostgresql, label: "PostgreSQL" },
+  { icon: siMysql, label: "MySQL" },
+  { icon: siGooglebigquery, label: "BigQuery" },
+  { icon: siSnowflake, label: "Snowflake" },
+  { icon: siDatabricks, label: "Databricks" },
+  { icon: siClickhouse, label: "ClickHouse" },
 ];
 
 const CHIP_ICONS = [
@@ -70,8 +79,10 @@ export function SuggestionsPanel({
           <span className="sources-label">Get better answers from your data sources</span>
           <span className="sources-tiles">
             {SOURCES.map((s) => (
-              <span key={s.id} className="source-tile" title={s.label} style={{ background: s.bg, color: s.fg }}>
-                {s.mono}
+              <span key={s.label} className="source-tile" title={s.label}>
+                <svg width="14" height="14" viewBox="0 0 24 24" role="img" aria-label={s.label}>
+                  <path d={s.icon.path} fill={`#${s.icon.hex}`} />
+                </svg>
               </span>
             ))}
           </span>

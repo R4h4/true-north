@@ -70,6 +70,16 @@ body {
   color: var(--ink-strong);
 }
 
+.topbar .tag {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--accent-dark);
+  background: var(--accent-tint);
+  border: 1px solid #dcd2fa;
+  border-radius: 99px;
+  padding: 3px 10px;
+}
+
 /* Persona picker: segmented control on the light topbar */
 .persona-picker {
   margin-left: auto;
@@ -293,10 +303,8 @@ body {
   border-radius: 7px;
   display: grid;
   place-items: center;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  background: var(--surface);
+  border: 1px solid var(--border);
   cursor: default;
 }
 
@@ -377,9 +385,16 @@ body {
   max-width: 640px;
 }
 
-/* Input row: white field with a hairline border, green focus ring */
+/* Input row: white field with a hairline border; focused input glows with
+   an outer accent ring */
 .chat-pane .copilotKitInput {
   border-top: 1px solid var(--border);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.chat-pane .copilotKitInput:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3.5px rgba(124, 92, 240, 0.22);
 }
 
 /* Hide CopilotKit branding: the dev-inspector floating button (custom element)

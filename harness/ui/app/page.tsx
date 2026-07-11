@@ -222,6 +222,7 @@ export default function Page() {
           <BrandMark />
           <h1>True North</h1>
         </div>
+        <span className="tag">Governed BI</span>
         <div className="persona-picker">
           {PERSONAS.map((p) => (
             <button
