@@ -39,6 +39,7 @@ The demo warehouse models **Phong Vũ** (phongvu.vn), a Vietnamese consumer-elec
 | `governance/` | Karsten | Row-level access security, column-level anonymization, PII tokenization, table access — applied per user | Authenticated query CLI (auth token resolves the user and their permissions) |
 | `knowledge-graph/` | Karsten | Glossary + business knowledge; automatically ingests everything defined in the semantic layer (metrics, dimensions) **including permission metadata**, so answers can say "this metric exists but you don't have access" | Cypher, via the governed CLI |
 | `harness/` | Phong | The agent on top: queries the knowledge graph for context, then the warehouse — both through the governed CLI | Chat |
+| Postgres | Karsten | Runtime policy store (compiled from `users.yaml`) + one audit row per `tn` invocation (ADR 0010) | Read by the CLI at runtime; hydrated by `python -m governance.pg` |
 
 The interface is specified in [`CONTRACT.md`](CONTRACT.md) — commands, output envelope, error semantics, KG data model, demo users. Interface changes land only as PRs editing that file. In short, the contract the harness consumes is a **single governed CLI**: every call carries an auth token that resolves to a user, and it fronts both surfaces — **Cypher against the knowledge graph** (the token lets permission metadata be injected into graph answers) and **data queries against the warehouse** (the token scopes row/column/table access). Exact interface specs are the next step — nothing beyond `source/` is implemented yet.
 

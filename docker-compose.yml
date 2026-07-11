@@ -28,5 +28,29 @@ services:
       retries: 20
       start_period: 20s
 
+  # Postgres for the runtime policy store + query-audit log (ADR 0010).
+  # Same compile-from-authored-YAML pattern as Neo4j (ADR 0005): users.yaml is
+  # the authored source, `python -m governance.pg` hydrates this at deploy time,
+  # and the CLI reads personas/roles from here at runtime. audit_log rows are
+  # written fail-open on every `tn` invocation. Nothing here is contractual.
+  postgres:
+    image: postgres:16-alpine
+    container_name: true-north-postgres
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: truenorth
+      POSTGRES_PASSWORD: truenorth
+      POSTGRES_DB: truenorth
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U truenorth -d truenorth"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
 volumes:
   neo4j-data:
+  postgres-data:

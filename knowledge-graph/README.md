@@ -24,10 +24,13 @@ The compiler enforces the graph invariants in `/CONTRACT.md` §4.2 (variant conc
 
 Neo4j runs in docker (root `docker-compose.yml`, ADR 0005); the graph is a build
 artifact — every compile is a full wipe-and-rebuild stamped `graph_compiled_at`.
+The same compose file also runs Postgres, the runtime policy + query-audit store
+(ADR 0010), compiled from `users.yaml` by `python -m governance.pg`.
 
 ```bash
-docker compose up -d                         # Neo4j on bolt://localhost:7687, browser :7474
+docker compose up -d --wait                  # Neo4j (bolt :7687, browser :7474) + Postgres (:5433)
 uv run python -m knowledge_graph.compile     # wipe + rebuild from the three sources of truth
+uv run python -m governance.pg               # hydrate the runtime policy store (idempotent)
 ```
 
 The compile reads `source/semantic/`, so Agent A's semantic layer must be present
