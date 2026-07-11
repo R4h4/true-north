@@ -388,33 +388,64 @@ def generate_disbursements(rng: np.random.Generator, apps: list[dict]):
     return disbursements
 
 
-def _dpd_bucket(dpd: int) -> str:
-    if dpd <= 0:
-        return "current"
-    if dpd < 30:
-        return "dpd_1_29"
-    if dpd < 60:
-        return "dpd_30_59"
-    if dpd < 90:
-        return "dpd_60_89"
-    return "dpd_90_plus"
-
-
 def _vintage_month(disbursed_date: date) -> date:
     return date(disbursed_date.year, disbursed_date.month, 1)
+
+
+# Bucket-transition Markov model (month-to-month, per active loan). Rows/cols in
+# _BUCKET_ORDER. Base matrix calibrated at risk_mult == 1.0 to land small-scale steady
+# -state monthly aggregates around: NPL (90+ / ENR) ~6-9%, 30+ DPD ratio ~12-16%,
+# realistic Vietnamese consumer-finance magnitudes (retuned; see data/TRAPS.md).
+_BUCKET_ORDER = ("current", "dpd_1_29", "dpd_30_59", "dpd_60_89", "dpd_90_plus")
+
+# Each row: P(worsen by one bucket), P(cure fully to current), remainder stays put.
+# dpd_90_plus has no "worsen" transition (bucket is terminal short of write-off).
+_BASE_WORSEN = {"current": 0.080, "dpd_1_29": 0.205, "dpd_30_59": 0.200, "dpd_60_89": 0.320, "dpd_90_plus": 0.0}
+_BASE_CURE = {"current": 0.0, "dpd_1_29": 0.520, "dpd_30_59": 0.195, "dpd_60_89": 0.035, "dpd_90_plus": 0.022}
+
+# First-payment-default onset multiplier applied to the 'current' bucket's worsen
+# probability ONLY during a loan's first 2 months on book (fpd_rate's observation
+# window) — origination/underwriting risk is front-loaded relative to seasoned-book
+# steady-state delinquency, which is what keeps FPD ~10-12% baseline without also
+# dragging the seasoned-book 30+ DPD ratio out of its target band.
+_FPD_WINDOW_MONTHS = 2
+_FPD_ONSET_MULT = 3.4
+
+_DPD_FLOOR = {"current": 0, "dpd_1_29": 1, "dpd_30_59": 30, "dpd_60_89": 60, "dpd_90_plus": 90}
+_DPD_JITTER = {"current": (0, 0), "dpd_1_29": (1, 28), "dpd_30_59": (30, 58), "dpd_60_89": (60, 88), "dpd_90_plus": (90, 160)}
+
+
+def _next_bucket(rng: np.random.Generator, bucket: str, risk_mult: float, onset_mult: float = 1.0) -> str:
+    idx = _BUCKET_ORDER.index(bucket)
+    worsen_p = _BASE_WORSEN[bucket] * risk_mult
+    if bucket == "current":
+        worsen_p *= onset_mult
+    worsen_p = min(0.85, worsen_p)
+    cure_p = max(0.01, _BASE_CURE[bucket] / max(risk_mult, 0.4)) if bucket != "current" else 0.0
+    r = rng.random()
+    if bucket != "dpd_90_plus" and r < worsen_p:
+        return _BUCKET_ORDER[idx + 1]
+    if bucket != "current" and r < worsen_p + cure_p:
+        return "current"
+    return bucket
+
+
+def _dpd_for_bucket(rng: np.random.Generator, bucket: str) -> int:
+    lo, hi = _DPD_JITTER[bucket]
+    return lo if lo == hi else int(rng.integers(lo, hi + 1))
 
 
 def generate_snapshots_and_collections(rng: np.random.Generator, disbursements: list[dict]):
     """Month-end loan snapshots + monthly collections.
 
-    Delinquency trajectory per loan is a simple Markov-ish random walk on dpd, seeded by
-    product risk (two-wheeler lowest, cash_loan highest — pattern 5) and boosted for the
-    bad 2025-01/02 telesales vintage (pattern 3 / trap 6).
+    Delinquency trajectory per loan is a bucket-level Markov chain (see _BASE_WORSEN /
+    _BASE_CURE), seeded by product risk (two-wheeler lowest, cash_loan highest —
+    pattern 5) and boosted for the bad 2025-01/02 telesales vintage (pattern 3 / trap 6).
     """
     snapshots: list[dict] = []
     collections: list[dict] = []
 
-    product_risk = {"two_wheeler_loan": 0.55, "cd_installment": 0.85, "credit_card_loan": 1.05, "cash_loan": 1.25}
+    product_risk = {"two_wheeler_loan": 0.55, "cd_installment": 0.90, "credit_card_loan": 1.10, "cash_loan": 1.35}
 
     for loan in disbursements:
         disb_date = loan["disbursed_date"]
@@ -427,14 +458,15 @@ def generate_snapshots_and_collections(rng: np.random.Generator, disbursements: 
             loan["channel"] == "telesales"
             and _vintage_month(disb_date) in BAD_VINTAGE_MONTHS
         )
-        risk_mult = product_risk[loan["product_key"]] * (2.0 if is_bad_vintage else 1.0)
+        risk_mult = product_risk[loan["product_key"]] * (1.45 if is_bad_vintage else 1.0)
 
         principal = loan["principal"]
         tenor = loan["tenor_months"]
         installment = loan["monthly_installment"]
         outstanding = float(principal)
+        bucket = "current"
         dpd = 0
-        prior_dpd = 0
+        prior_bucket = "current"
         status = "active"
         written_off = False
         restructured = False
@@ -466,32 +498,29 @@ def generate_snapshots_and_collections(rng: np.random.Generator, disbursements: 
                 )
                 break
 
-            # delinquency random walk
-            delinquency_p = 0.10 * risk_mult
-            cure_p = 0.28 / max(risk_mult, 0.4)
-            if rng.random() < delinquency_p:
-                dpd += int(rng.integers(15, 45))
-            elif dpd > 0 and rng.random() < cure_p:
-                dpd = max(0, dpd - int(rng.integers(20, 40)))
-            else:
-                dpd += int(rng.integers(0, 3)) if dpd > 0 else 0
+            # Bucket-level Markov transition for this month (see _BASE_WORSEN/_BASE_CURE).
+            # Early-life onset multiplier applies only within the FPD observation window.
+            onset_mult = _FPD_ONSET_MULT if months_elapsed <= _FPD_WINDOW_MONTHS else 1.0
+            bucket = _next_bucket(rng, bucket, risk_mult, onset_mult)
+            dpd = _dpd_for_bucket(rng, bucket)
 
-            dpd = max(0, dpd)
-
-            # Restructuring campaign 2025-03..05: ~4% of 30-89 DPD loans get reset (pattern 2/trap 3).
-            if m_end in RESTRUCTURE_MONTHS and 30 <= dpd < 90 and rng.random() < 0.04:
+            # Restructuring campaign 2025-03..05: ~8-10% of 30-89 DPD loans get reset per
+            # month, cumulatively peaking the restructured share ~3-5% given the larger
+            # realistic delinquent pool (pattern 2/trap 3).
+            if m_end in RESTRUCTURE_MONTHS and bucket in ("dpd_30_59", "dpd_60_89") and rng.random() < 0.16:
+                bucket = "current"
                 dpd = 0
                 restructured = True
 
             # Write-off wave 2025-06: loans that are dpd_90_plus at that snapshot write off (pattern 1/trap 2).
-            if m_end == WRITE_OFF_MONTH and dpd >= 90 and rng.random() < 0.55:
+            if m_end == WRITE_OFF_MONTH and bucket == "dpd_90_plus" and rng.random() < 0.45:
                 snapshots.append(
                     {
                         "snapshot_month": m_end,
                         "loan_id": loan["loan_id"],
                         "outstanding_principal": int(round(outstanding)),
                         "dpd": dpd,
-                        "dpd_bucket": _dpd_bucket(dpd),
+                        "dpd_bucket": bucket,
                         "status": "written_off",
                         "is_restructured": restructured,
                     }
@@ -506,19 +535,19 @@ def generate_snapshots_and_collections(rng: np.random.Generator, disbursements: 
                         "loan_id": loan["loan_id"],
                         "outstanding_principal": int(round(outstanding)),
                         "dpd": dpd,
-                        "dpd_bucket": _dpd_bucket(dpd),
+                        "dpd_bucket": bucket,
                         "status": "active",
                         "is_restructured": restructured,
                     }
                 )
 
             # ---- Collections for this month ----
-            # bucket_at_due = bucket implied by dpd at the START of the month (trap 8):
-            # the PRIOR snapshot's dpd (0 for the first month).
-            bucket_at_due = _dpd_bucket(prior_dpd)
+            # bucket_at_due = bucket implied at the START of the month (trap 8): the
+            # PRIOR snapshot's bucket ('current' for the first month).
+            bucket_at_due = prior_bucket
             amount_due = installment if not written_off else 0
             if amount_due > 0:
-                collect_p = {"current": 0.97, "dpd_1_29": 0.85, "dpd_30_59": 0.55, "dpd_60_89": 0.30, "dpd_90_plus": 0.10}[bucket_at_due]
+                collect_p = {"current": 0.98, "dpd_1_29": 0.90, "dpd_30_59": 0.62, "dpd_60_89": 0.36, "dpd_90_plus": 0.13}[bucket_at_due]
                 collected = amount_due * float(rng.uniform(max(0.0, collect_p - 0.1), min(1.0, collect_p + 0.1)))
                 collections.append(
                     {
@@ -530,7 +559,7 @@ def generate_snapshots_and_collections(rng: np.random.Generator, disbursements: 
                     }
                 )
 
-            prior_dpd = dpd
+            prior_bucket = bucket
 
     return snapshots, collections
 
