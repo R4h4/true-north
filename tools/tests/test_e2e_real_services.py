@@ -139,6 +139,44 @@ class TestPersonaMatrix:
         assert access["gross_margin"]["readable"] is False
         assert access["gross_margin"]["reason"]
 
+    def test_kg_denials_are_never_silently_undisclosed(self):
+        # The disclosure promise, pinned as an invariant instead of golden shapes:
+        # every masked-column denial visible in a response's _access annotations
+        # must be explained by a column_masked/column_banded object in that same
+        # response's applied_permissions. Guards _kg_touched_tables against
+        # unrecognized record shapes silently yielding an empty disclosure.
+        queries = [
+            "MATCH (m:Metric) RETURN m",
+            "MATCH (d:Dimension) RETURN d",
+            "MATCH (m:Metric)-[:COMPUTED_FROM]->(t:Table) RETURN m, collect(t) AS tables",
+            "MATCH (c:Concept)-[:MEASURED_BY]->(m:Metric) RETURN c, {metric: m} AS wrapped",
+        ]
+        for token in (MAI, DUC, LAN, BINH):
+            for cypher in queries:
+                env = tn("kg", "query", "--token", token, cypher)
+                disclosed = {
+                    p["column"].split(".", 1)[1]
+                    for p in env["metadata"]["applied_permissions"]
+                    if p["type"] in ("column_masked", "column_banded")
+                }
+
+                def walk(v):
+                    if isinstance(v, dict):
+                        acc = v.get("_access")
+                        if acc and not acc["readable"] and "masked column" in acc.get("reason", ""):
+                            col = acc["reason"].rsplit(" ", 1)[-1].split(".")[-1]
+                            assert col in disclosed, (
+                                f"{token} {cypher!r}: denial on {v.get('key')} names masked "
+                                f"column '{col}' but applied_permissions discloses {disclosed}"
+                            )
+                        for x in v.values():
+                            walk(x)
+                    elif isinstance(v, list):
+                        for x in v:
+                            walk(x)
+
+                walk(env["result"]["records"])
+
 
 # ---------------------------------------------------------------------------
 # Graph invariants through the real compile
