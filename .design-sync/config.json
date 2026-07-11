@@ -1,0 +1,21 @@
+{
+  "projectId": "276c8dc5-9f73-483e-b900-3411a744cb05",
+  "shape": "package",
+  "pkg": "true-north-ui",
+  "globalName": "TrueNorthUI",
+  "cssEntry": "design-fonts.css",
+  "tokensPkg": "true-north-ui",
+  "tokensGlob": "app/globals.css",
+  "readmeHeader": ".design-sync/conventions.md",
+  "componentSrcMap": {
+    "ChartPayload": null,
+    "KgGraph": null
+  },
+  "dtsPropsFor": {
+    "ChartView": "/** Chart payload produced by the render_chart tool (governed envelope rows). */ chart: { type: 'bar' | 'hbar' | 'line' | 'kpi'; title: string; x_label: string; y_label: string; y_format: 'percent' | 'vnd' | 'number'; points: { x: string; y: number }[]; as_of?: string };",
+    "KgPanel": "/** Accumulated knowledge-graph subgraph; omit for the empty state. */ graph?: { nodes: { id: string; label: string; name: string; locked: boolean; new: boolean }[]; edges: { source: string; target: string; label: string }[] };",
+    "Thoughts": "/** Reasoning-summary text streamed so far. */ text: string; /** True while the agent is still running - expands and auto-follows; false collapses to a 'Thoughts' toggle. */ live: boolean;",
+    "ToolStep": "/** Governed tool name, e.g. 'query_warehouse' - unknown names render nothing. */ name: string; /** Tool arguments; known keys are summarized inline. */ args: Record<string, unknown>; /** 'complete' shows a check; anything else shows a spinner. */ status: string;",
+    "AskUserCard": "/** The clarifying question. */ question: string; /** One button per option. */ options: string[]; /** True renders the answered pill instead of buttons. */ answered: boolean; /** Called with the chosen option. */ onSelect?: (option: string) => void;"
+  }
+}

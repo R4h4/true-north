@@ -2,8 +2,8 @@
 
 // Dependency-free SVG chart for render_chart tool results. The payload comes
 // from the governed envelope (backend-injected rows) - never model-typed.
-// Visual language: Holistics answer cards - navy bars, green line with a soft
-// area fill, hairline gridlines, and a dataset-attribution footer strip.
+// Visual language: Wren-style answer cards - navy bars, violet line with a
+// soft area fill, hairline gridlines, and a dataset-attribution footer strip.
 // Negative values are supported (zero baseline, red bars) - retail margins
 // go negative and a chart that clips them lies by omission.
 
@@ -18,13 +18,13 @@ export type ChartPayload = {
 };
 
 const W = 640;
-const NAVY = "#1e2a4a";
-const GREEN = "#259b6c";
+const NAVY = "#1c2340";
+const ACCENT = "#7c5cf0";
 const RED = "#d6455d";
-const GRID = "#eef2f6";
-const ZERO = "#d8dfe8";
-const INK = "#32353f";
-const MUTED = "#8a94a6";
+const GRID = "#eef0f7";
+const ZERO = "#d9dce8";
+const INK = "#363d52";
+const MUTED = "#8b90a3";
 
 function formatY(v: number, fmt: ChartPayload["y_format"]): string {
   if (fmt === "percent") return `${(v * 100).toFixed(Math.abs(v * 100) >= 10 ? 0 : 1)}%`;
@@ -98,7 +98,7 @@ function HBarChart({ chart }: { chart: ChartPayload }) {
   return (
     <div className="chart-card">
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={chart.title}>
-        <text x={16} y={20} fontSize={13.5} fontWeight={600} fill={INK}>
+        <text x={16} y={20} fontSize={14.5} fontWeight={600} fill={INK}>
           {chart.title}
         </text>
         <line x1={xPos(0)} x2={xPos(0)} y1={PAD.top - 6} y2={H - PAD.bottom} stroke={ZERO} strokeWidth={1} />
@@ -109,14 +109,14 @@ function HBarChart({ chart }: { chart: ChartPayload }) {
           const bw = Math.abs(xPos(p.y) - xPos(0));
           return (
             <g key={p.x}>
-              <text x={PAD.left - 8} y={y + ROW_H / 2 + 4} fontSize={11} fill={INK} textAnchor="end">
+              <text x={PAD.left - 8} y={y + ROW_H / 2 + 4} fontSize={12} fill={INK} textAnchor="end">
                 {truncate(p.x, 18)}
               </text>
               <rect x={x0} y={y} width={Math.max(bw, 1)} height={ROW_H} rx={3} fill={neg ? RED : NAVY} />
               <text
                 x={neg ? x0 - 6 : x0 + bw + 6}
                 y={y + ROW_H / 2 + 4}
-                fontSize={11}
+                fontSize={12}
                 fontWeight={500}
                 fill={neg ? RED : INK}
                 textAnchor={neg ? "end" : "start"}
@@ -147,13 +147,13 @@ function XYChart({ chart }: { chart: ChartPayload }) {
   return (
     <div className="chart-card">
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={chart.title}>
-        <text x={PAD.left} y={20} fontSize={13.5} fontWeight={600} fill={INK}>
+        <text x={PAD.left} y={20} fontSize={14.5} fontWeight={600} fill={INK}>
           {chart.title}
         </text>
         {ticks.map((t, i) => (
           <g key={i}>
             <line x1={PAD.left} x2={W - PAD.right} y1={yPos(t)} y2={yPos(t)} stroke={GRID} strokeWidth={1} />
-            <text x={PAD.left - 8} y={yPos(t) + 4} fontSize={10} fill={MUTED} textAnchor="end">
+            <text x={PAD.left - 8} y={yPos(t) + 4} fontSize={11} fill={MUTED} textAnchor="end">
               {formatY(t, chart.y_format)}
             </text>
           </g>
@@ -174,7 +174,7 @@ function XYChart({ chart }: { chart: ChartPayload }) {
                 <text
                   x={x + bw / 2}
                   y={neg ? yPos(p.y) + 14 : yPos(p.y) - 6}
-                  fontSize={11}
+                  fontSize={12}
                   fontWeight={500}
                   fill={neg ? RED : INK}
                   textAnchor="middle"
@@ -190,18 +190,18 @@ function XYChart({ chart }: { chart: ChartPayload }) {
               points={`${PAD.left + 0.5 * xStep},${yPos(Math.max(0, vMin))} ${pts.map((_, i) => lineXY(i)).join(" ")} ${
                 PAD.left + (pts.length - 0.5) * xStep
               },${yPos(Math.max(0, vMin))}`}
-              fill={GREEN}
+              fill={ACCENT}
               opacity={0.08}
             />
             <polyline
               points={pts.map((_, i) => lineXY(i)).join(" ")}
               fill="none"
-              stroke={GREEN}
+              stroke={ACCENT}
               strokeWidth={2}
               strokeLinejoin="round"
             />
             {pts.map((p, i) => (
-              <circle key={p.x} cx={PAD.left + (i + 0.5) * xStep} cy={yPos(p.y)} r={3} fill="#ffffff" stroke={GREEN} strokeWidth={2} />
+              <circle key={p.x} cx={PAD.left + (i + 0.5) * xStep} cy={yPos(p.y)} r={3} fill="#ffffff" stroke={ACCENT} strokeWidth={2} />
             ))}
           </>
         )}

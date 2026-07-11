@@ -1,0 +1,8 @@
+/* Design-system font entry (consumed by the design-sync bundle, not the app).
+   The app loads Inter via next/font in layout.tsx, which also defines
+   --font-inter at runtime — outside Next both must come from here. */
+@import url("https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,100..900&display=swap");
+
+:root {
+  --font-inter: "Inter";
+}

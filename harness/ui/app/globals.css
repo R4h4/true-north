@@ -1,26 +1,31 @@
-/* True North design tokens — Holistics-inspired light theme.
-   Ink/surface/border values sampled from holistics.io product UI:
-   Inter, white surfaces on #F5F8FA, hairline #E6EDF3 borders,
-   brand green #259B6C, data navy #1E2A4A. */
+/* True North design tokens — WrenAI-inspired light theme.
+   Sampled from getwren.ai: IBM Plex Sans/Mono, near-black navy ink #060A1F,
+   violet accent #7C5CF0, cool #F7F8FC surfaces, 6-8px radii.
+   Green/red/amber stay as SEMANTIC access-status colors only. */
 
 :root {
-  --ink: #32353f;
-  --ink-secondary: #5c6470;
-  --muted: #8a94a6;
-  --bg-app: #f5f8fa;
+  --ink: #363d52;
+  --ink-strong: #060a1f;
+  --ink-secondary: #5b6172;
+  --muted: #8b90a3;
+  --bg-app: #eef0f6;
   --surface: #ffffff;
-  --surface-subtle: #f9fbfc;
-  --border: #e6edf3;
-  --border-strong: #d8dfe8;
+  --surface-subtle: #fafbfe;
+  --border: #e8eaf2;
+  --border-strong: #d9dce8;
+  --accent: #7c5cf0;
+  --accent-dark: #6344d6;
+  --accent-tint: #f0ecfd;
   --green: #259b6c;
   --green-dark: #196848;
   --green-tint: #e5f5ee;
-  --navy: #1e2a4a;
+  --navy: #060a1f;
   --blue-tint: #e8f1fd;
   --red: #d6455d;
   --red-tint: #fdeef1;
   --amber: #b7791f;
-  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-card: 0 1px 2px rgba(6, 10, 31, 0.06);
+  --shadow-pane: 0 1px 2px rgba(6, 10, 31, 0.05), 0 6px 20px rgba(6, 10, 31, 0.06);
 }
 
 * {
@@ -30,7 +35,7 @@
 }
 
 body {
-  font-family: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
   background: var(--bg-app);
   color: var(--ink);
   height: 100vh;
@@ -60,18 +65,18 @@ body {
 }
 
 .topbar h1 {
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--ink);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink-strong);
 }
 
 .topbar .tag {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
-  color: var(--green-dark);
-  background: var(--green-tint);
-  border: 1px solid #c4e8d8;
+  color: var(--accent-dark);
+  background: var(--accent-tint);
+  border: 1px solid #dcd2fa;
   border-radius: 99px;
   padding: 3px 10px;
 }
@@ -81,7 +86,7 @@ body {
   margin-left: auto;
   display: flex;
   gap: 2px;
-  background: #eef2f6;
+  background: #eef0f7;
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 2px;
@@ -93,7 +98,7 @@ body {
   color: var(--ink-secondary);
   border-radius: 6px;
   padding: 5px 12px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
@@ -111,43 +116,45 @@ body {
   box-shadow: var(--shadow-card);
 }
 
+/* Workspace: both panes float as rounded cards on the grey app canvas */
 .main {
   display: grid;
   grid-template-columns: 1fr minmax(280px, 420px);
   min-height: 0;
+  gap: 14px;
+  padding: 14px;
 }
 
 /* Narrow panes: stack the KG panel under the chat instead of crushing it */
 @media (max-width: 900px) {
   .main {
     grid-template-columns: 1fr;
-    grid-template-rows: 1fr 220px;
+    grid-template-rows: 1fr 320px;
     overflow-y: auto;
-  }
-  .chat-pane {
-    border-right: none;
-    border-bottom: 1px solid var(--border);
   }
 }
 
 .chat-pane {
+  position: relative; /* anchors the suggestion chips above the input */
   min-width: 0;
   /* grid items default to min-height:auto - without this the pane grows with
      its content and the input scrolls off-page instead of messages scrolling */
   min-height: 0;
   overflow: hidden;
-  border-right: 1px solid var(--border);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-pane);
   background: var(--surface);
   display: flex;
   flex-direction: column;
-  /* CopilotKit theme variables — Holistics light */
+  /* CopilotKit theme variables — Wren light */
   --copilot-kit-background-color: #ffffff;
-  --copilot-kit-secondary-color: #f5f8fa;
-  --copilot-kit-secondary-contrast-color: #32353f;
-  --copilot-kit-primary-color: #259b6c;
+  --copilot-kit-secondary-color: #f7f8fc;
+  --copilot-kit-secondary-contrast-color: #363d52;
+  --copilot-kit-primary-color: #7c5cf0;
   --copilot-kit-contrast-color: #ffffff;
-  --copilot-kit-separator-color: #e6edf3;
-  --copilot-kit-muted-color: #8a94a6;
+  --copilot-kit-separator-color: #e8eaf2;
+  --copilot-kit-muted-color: #8b90a3;
   --copilot-kit-input-background-color: #ffffff;
 }
 
@@ -162,17 +169,279 @@ body {
   height: 100%;
 }
 
-/* User messages: Holistics-style light blue pill with ink text (the green
-   primary color stays on the send button only). Specificity must beat the
-   library's own .copilotKitMessage.copilotKitUserMessage rule. */
-.chat-pane .copilotKitMessage.copilotKitUserMessage {
-  background: var(--blue-tint);
-  color: #21324e;
+/* Motion vocabulary (from the Claude Design workbench iteration): messages
+   fade up, KG nodes pop + pulse, edges fade in. */
+@keyframes tn-pop {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.82); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes tn-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(124, 92, 240, 0.3); }
+  55% { box-shadow: 0 0 0 7px rgba(124, 92, 240, 0); }
+}
+@keyframes tn-fade {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes tn-edge {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-/* Input row: white field with a hairline border, green focus ring */
+/* Empty-state (Claude-style): the message list collapses, the real input
+   centers in the pane, the hero overlay puts the greeting above it and the
+   sources bar + suggestion chips below it. Everything reverts to the pinned
+   bottom-input layout once the first message is sent. */
+.chat-pane.empty {
+  /* short panes scroll to reach the chips instead of clipping them */
+  overflow-y: auto;
+}
+
+.chat-pane.empty > div {
+  flex: 0 0 auto;
+}
+
+.chat-pane.empty .copilotKitChat {
+  height: auto;
+}
+
+.chat-pane.empty .copilotKitMessagesContainer {
+  display: none;
+}
+
+/* The messages block keeps only its footer (the suggestions panel) and moves
+   BELOW the input; both center as one column in the pane. */
+.chat-pane.empty .copilotKitMessages {
+  flex: 0 0 auto;
+  order: 2;
+  overflow: visible;
+  padding: 0;
+}
+
+.chat-pane.empty .copilotKitChatBody {
+  justify-content: flex-start;
+}
+
+.chat-pane.empty .copilotKitInputContainer {
+  order: 1;
+  width: min(660px, 88%);
+  margin: 0 auto;
+}
+
+.chat-pane.empty .copilotKitInput {
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  box-shadow: var(--shadow-card);
+}
+
+/* Greeting: a normal flow block above the chat (the .chat-pane > div flex:1
+   rule must not stretch it) - the input then starts right below it.
+   Auto margins center the whole greeting+input+chips stack vertically on
+   tall panes, and collapse to 0 when content overflows so scroll still
+   reaches everything on short panes. */
+.chat-pane.empty .chat-hero {
+  flex: 0 0 auto;
+  min-height: auto;
+  text-align: center;
+  margin-top: auto;
+}
+
+.chat-pane.empty > div:last-child {
+  margin-bottom: auto;
+}
+
+.hero-greeting {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 11px;
+  padding: 20px 24px 26px;
+}
+
+.hero-greeting h3 {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--ink-strong);
+}
+
+.hero-greeting p {
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--ink-secondary);
+  max-width: 400px;
+}
+
+/* Sources bar + chips: rendered in flow by the suggestions slot, directly
+   below the input in empty mode */
+.suggestions-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 13px;
+  padding: 14px 24px 0;
+}
+
+.sources-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: min(660px, 100%);
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  padding: 9px 12px 9px 16px;
+  font-size: 13.5px;
+  color: var(--ink-secondary);
+}
+
+.sources-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sources-tiles {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.source-tile {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  cursor: default;
+}
+
+.sources-close {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.sources-close:hover {
+  color: var(--ink-secondary);
+  background: var(--border);
+}
+
+.hero-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 22px;
+}
+
+.hero-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  background: transparent;
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--ink-secondary);
+  cursor: pointer;
+  transition: color 150ms ease, background 150ms ease;
+}
+
+.hero-chip svg {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+
+.hero-chip:hover {
+  color: var(--ink);
+  background: var(--surface-subtle);
+}
+
+.hero-chip:hover svg {
+  color: var(--accent-dark);
+}
+
+.chat-pane .copilotKitMessage {
+  animation: tn-fade 0.3s ease both;
+}
+
+/* User messages: violet-tinted bubble with a tail corner, ink text (the
+   accent stays saturated on the send button only). Specificity must beat
+   the library's own .copilotKitMessage.copilotKitUserMessage rule. */
+.chat-pane .copilotKitMessage.copilotKitUserMessage {
+  background: var(--accent-tint);
+  color: #2c2350;
+  border-radius: 12px 12px 3px 12px;
+  max-width: 78%;
+  font-size: 15px;
+  font-weight: 450;
+}
+
+/* Assistant prose: measured line length, calm rhythm */
+.chat-pane .copilotKitMessage.copilotKitAssistantMessage {
+  font-size: 15px;
+  line-height: 1.62;
+  color: var(--ink);
+  max-width: 640px;
+}
+
+/* Input row: white field with a hairline border; focused input glows with
+   an outer accent ring */
 .chat-pane .copilotKitInput {
   border-top: 1px solid var(--border);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+/* keep the input (and its focus ring) clear of the pane's bottom edge */
+.chat-pane:not(.empty) .copilotKitInputContainer {
+  padding-bottom: 14px;
+}
+
+.chat-pane .copilotKitInput:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3.5px rgba(124, 92, 240, 0.22);
+}
+
+.chat-pane .copilotKitInput textarea {
+  font-size: 15px;
+  /* roomy two-line resting height; still auto-grows past it */
+  min-height: 48px;
+}
+
+/* Send button: muted glyph while the field is empty, filled accent circle
+   the moment there is something to send (also styles the stop state mid-run) */
+.chat-pane .copilotKitInputControlButton {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  transition: background 150ms ease, color 150ms ease, transform 150ms ease;
+}
+
+.chat-pane .copilotKitInputControlButton:not(:disabled) {
+  background: var(--accent);
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.chat-pane .copilotKitInputControlButton:not(:disabled):hover {
+  background: var(--accent-dark);
+  transform: scale(1.05);
 }
 
 /* Hide CopilotKit branding: the dev-inspector floating button (custom element)
@@ -190,19 +459,104 @@ cpk-web-inspector {
   flex-direction: column;
   background: var(--surface-subtle);
   min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-pane);
 }
 
-.kg-pane h2 {
-  font-size: 11px;
+/* In-chat collapsible reasoning ("Thoughts"), ChatGPT-style: a muted toggle
+   row that expands to an indented, left-ruled excerpt of the reasoning */
+.thoughts {
+  margin: 2px 0 8px;
+}
+
+.thoughts-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  padding: 4px 2px;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 150ms ease;
+}
+
+.thoughts-toggle:hover {
+  color: var(--ink-secondary);
+}
+
+.thoughts-toggle .chev {
+  flex-shrink: 0;
+  transition: transform 150ms ease;
+}
+
+.thoughts-toggle .chev.open {
+  transform: rotate(90deg);
+}
+
+.thoughts-body {
+  max-height: 240px;
+  overflow-y: auto;
+  margin: 2px 0 4px 4px;
+  padding: 2px 4px 2px 12px;
+  border-left: 2px solid var(--border-strong);
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--muted);
+  white-space: pre-wrap;
+}
+
+.kg-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 14px 16px 3px;
+}
+
+.kg-head h2 {
+  font-size: 12px;
   font-weight: 600;
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  padding: 14px 16px 6px;
+}
+
+/* Access-posture badge: the governed policy made visible per persona */
+.kg-badge {
+  font-size: 11.5px;
+  font-weight: 600;
+  border-radius: 99px;
+  padding: 2px 9px;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.badge-green {
+  color: var(--green-dark);
+  background: var(--green-tint);
+  border-color: #c4e8d8;
+}
+
+.badge-amber {
+  color: var(--amber);
+  background: #fdf6e3;
+  border-color: #ecd9b0;
+}
+
+.badge-red {
+  color: var(--red);
+  background: var(--red-tint);
+  border-color: #f2c4cd;
 }
 
 .kg-pane .hint {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ink-secondary);
   line-height: 1.5;
   padding: 0 16px 10px;
@@ -211,7 +565,94 @@ cpk-web-inspector {
 .kg-canvas {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+/* Node canvas: percent-positioned typed cards over an SVG edge layer */
+.kg-graph {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.kg-node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  animation: tn-pop 0.35s ease both;
+  z-index: 1;
+}
+
+.kg-node-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid;
+  box-shadow: var(--shadow-card);
+  white-space: nowrap;
+  /* the .kg-node wrapper caps width at the row slot so cards never overlap */
+  max-width: min(170px, 100%);
+  overflow: hidden;
+}
+
+.kg-node-type {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.kg-node-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* flex child: allow shrinking below content width so ellipsis engages */
+  min-width: 0;
+}
+
+.kg-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 20px;
+  text-align: center;
+}
+
+.kg-empty p {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--muted);
+  max-width: 220px;
+}
+
+.kg-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  padding: 9px 16px;
+  border-top: 1px solid var(--border);
+  font-size: 11.5px;
+  color: var(--ink-secondary);
+}
+
+.kg-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.kg-legend-swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  border: 1px solid;
+  flex-shrink: 0;
 }
 
 /* Chart + HITL cards: white surface, hairline border, soft shadow —
@@ -239,8 +680,64 @@ cpk-web-inspector {
   padding: 7px 12px;
   border-top: 1px solid var(--border);
   background: var(--surface-subtle);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ink-secondary);
+}
+
+/* Agent step timeline: compact rows sharing a continuous left rule, so a
+   multi-step turn reads as one "work" block */
+.tool-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0 3px 10px;
+  border-left: 2px solid var(--border);
+  font-size: 13px;
+  color: var(--ink-secondary);
+}
+
+.tool-step .step-label {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.tool-step .step-args {
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.step-spinner {
+  width: 11px;
+  height: 11px;
+  flex-shrink: 0;
+  border: 2px solid var(--border-strong);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: step-spin 0.7s linear infinite;
+}
+
+@keyframes step-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-pane .copilotKitMessage,
+  .kg-node,
+  .kg-node-card {
+    animation: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step-spinner {
+    animation: none;
+  }
 }
 
 /* KPI single-value card: Holistics stat-card language */
@@ -252,13 +749,13 @@ cpk-web-inspector {
 }
 
 .kpi-label {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--ink-secondary);
 }
 
 .kpi-value {
-  font-size: 30px;
+  font-size: 32px;
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--ink);
@@ -266,7 +763,7 @@ cpk-web-inspector {
 }
 
 .kpi-sub {
-  font-size: 11.5px;
+  font-size: 12.5px;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
@@ -281,7 +778,7 @@ cpk-web-inspector {
 }
 
 .ask-user-card p {
-  font-size: 13.5px;
+  font-size: 15px;
   font-weight: 500;
   line-height: 1.5;
   margin-bottom: 10px;
@@ -297,7 +794,7 @@ cpk-web-inspector {
   border: 1px solid var(--border-strong);
   background: var(--surface);
   color: var(--ink);
-  font-size: 13px;
+  font-size: 14px;
   font-family: inherit;
   line-height: 1.45;
   cursor: pointer;
@@ -305,21 +802,21 @@ cpk-web-inspector {
 }
 
 .ask-user-card button:hover {
-  border-color: var(--green);
-  background: var(--green-tint);
+  border-color: var(--accent);
+  background: var(--accent-tint);
 }
 
 .ask-user-card button:focus-visible {
-  outline: 2px solid var(--green);
+  outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
 
 .ask-user-card .answered {
   display: inline-block;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
-  color: var(--green-dark);
-  background: var(--green-tint);
+  color: var(--accent-dark);
+  background: var(--accent-tint);
   border-radius: 99px;
   padding: 3px 10px;
 }
