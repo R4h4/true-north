@@ -1,0 +1,32 @@
+# Neo4j for the true-north knowledge graph.
+# Graph contents are a build artifact (ADR 0005): `knowledge_graph.compile`
+# does a full wipe-and-rebuild against this instance. The browser at :7474 is
+# for human exploration only — permission annotations exist only via the CLI
+# and nothing observed over raw bolt is contractual (CONTRACT.md).
+#
+# Bring-up:  docker compose up -d   (see knowledge-graph/README.md)
+services:
+  neo4j:
+    image: neo4j:5-community
+    container_name: true-north-neo4j
+    ports:
+      - "7474:7474"   # HTTP browser UI
+      - "7687:7687"   # bolt
+    environment:
+      # Fixed dev credentials — this is a local demo instance, no real auth (non-goal).
+      NEO4J_AUTH: "${NEO4J_AUTH:-neo4j/true-north-dev}"
+      NEO4J_server_memory_pagecache_size: "256M"
+      NEO4J_server_memory_heap_max__size: "512M"
+    volumes:
+      - neo4j-data:/data
+    healthcheck:
+      # cypher-shell round-trip proves bolt is actually accepting queries,
+      # not just that the port is open.
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p \"$${NEO4J_PASSWORD:-true-north-dev}\" 'RETURN 1' || exit 1"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 20s
+
+volumes:
+  neo4j-data:

@@ -1,0 +1,7 @@
+key: net-revenue
+name: Net revenue
+definition: >-
+  Sales net of returns.
+aliases: [net sales, revenue net of returns]
+variant_of: gmv-revenue
+measured_by: net_revenue

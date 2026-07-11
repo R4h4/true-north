@@ -1,0 +1,8 @@
+key: same_store_comparability
+statement: >-
+  Same-store (like-for-like) growth must restrict to stores open for the full comparison window — opened at least 13 months before the period start and not closed within it. Counting new or closed stores attributes footprint change to organic growth.
+severity: critical
+constrains:
+  - metric:same_store_sales_growth
+  - table:dim_store
+  - table:fact_sales_lines

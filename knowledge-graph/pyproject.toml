@@ -3,7 +3,10 @@ name = "true-north-knowledge-graph"
 version = "0.1.0"
 description = "Business knowledge graph on Neo4j: glossary, concepts, compiled semantic layer + permissions"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "neo4j>=5.20",
+    "pyyaml>=6",
+]
 
 [build-system]
 requires = ["hatchling"]
