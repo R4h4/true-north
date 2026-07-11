@@ -4,7 +4,16 @@ import { CopilotKit, useCoAgent, useCopilotAction } from "@copilotkit/react-core
 import { CopilotChat } from "@copilotkit/react-ui";
 import "@copilotkit/react-ui/styles.css";
 import { useState } from "react";
+import { ChartView, type ChartPayload } from "../components/chart-view";
 import { KgPanel, type KgGraph } from "../components/kg-panel";
+
+function safeParse(s: string): any {
+  try {
+    return JSON.parse(s);
+  } catch {
+    return null;
+  }
+}
 
 const PERSONAS = [
   { id: "mai", label: "Mai · Executive" },
@@ -41,6 +50,20 @@ function Workbench() {
         )}
       </div>
     ),
+  });
+
+  // render_chart runs in Python (rows come from the governed envelope);
+  // available: "disabled" means we only RENDER the tool call - the action is
+  // never advertised to the model, so it can't collide with the backend tool.
+  useCopilotAction({
+    name: "render_chart",
+    available: "disabled",
+    render: ({ status, result }) => {
+      if (status !== "complete") return <p className="hint">rendering chart…</p>;
+      const parsed = typeof result === "string" ? safeParse(result) : result;
+      if (!parsed?.ok || !parsed.chart) return <></>;
+      return <ChartView chart={parsed.chart as ChartPayload} />;
+    },
   });
 
   return (

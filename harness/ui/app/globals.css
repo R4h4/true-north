@@ -118,6 +118,15 @@ body {
   overflow: auto;
 }
 
+.chart-card {
+  border: 1px solid #2c3040;
+  border-radius: 12px;
+  padding: 10px;
+  background: #12151d;
+  margin: 8px 0;
+  max-width: 680px;
+}
+
 .ask-user-card {
   border: 1px solid #2c3040;
   border-radius: 12px;

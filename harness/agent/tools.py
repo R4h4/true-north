@@ -181,7 +181,15 @@ def query_warehouse(
         # intended, so only forward real values.
         if value and value.strip():
             args += [flag, value]
-    return _with_token(args)
+    envelope = _with_token(args)
+    if envelope.get("ok"):
+        # Stash for render_chart: mutating the cache dict (not set()) is what
+        # survives the per-tool context copy.
+        try:
+            _run_cache.get()["__last_query__"] = envelope
+        except LookupError:
+            pass
+    return envelope
 
 
 def kg_schema() -> dict:

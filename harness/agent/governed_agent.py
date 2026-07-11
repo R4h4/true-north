@@ -10,6 +10,7 @@ from typing import Callable
 
 from strands import Agent, tool
 
+from agent.charts import render_chart
 from agent.model import build_model
 from agent.system_prompt import build_system_prompt
 from agent.tools import GOVERNED_TOOLS, current_token, kg_schema, reset_run_cache
@@ -37,7 +38,7 @@ def build_agent(include_local_ask_user: bool = True) -> Agent:
     schema = kg_schema()
     if not schema.get("ok"):
         raise RuntimeError(f"tn kg schema failed at bootstrap: {schema.get('error')}")
-    tools = GOVERNED_TOOLS + ([ask_user] if include_local_ask_user else [])
+    tools = GOVERNED_TOOLS + [render_chart] + ([ask_user] if include_local_ask_user else [])
     return Agent(
         model=build_model(),
         tools=tools,
