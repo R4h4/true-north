@@ -4,10 +4,12 @@ members = ["source", "governance", "knowledge-graph", "harness"]
 [dependency-groups]
 dev = [
     "pytest>=8",
+    "pyyaml>=6",
+    "sqlglot>=25",
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["contracts/conformance", "governance/tests"]
+testpaths = ["contracts/conformance", "governance/tests", "tools/tests"]
 # The conformance conftest imports `from conftest import invoke_cli`; adding its
 # directory to the path makes that resolve regardless of rootdir.
 pythonpath = ["contracts/conformance"]
