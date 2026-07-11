@@ -27,7 +27,10 @@ SCHEMA_PY = SOURCE_ROOT / "generator" / "schema.py"
 
 
 def _load_schema_module(schema_py: Path = SCHEMA_PY):
-    mod_name = "_tn_schema"
+    # Cache per resolved path: different datasets have different schema.py files,
+    # so keying the module name on the path keeps them from clobbering each other.
+    schema_py = Path(schema_py).resolve()
+    mod_name = f"_tn_schema_{abs(hash(str(schema_py)))}"
     if mod_name in sys.modules:
         return sys.modules[mod_name]
     spec = importlib.util.spec_from_file_location(mod_name, schema_py)
@@ -184,7 +187,15 @@ def _table(stem: str, raw: dict) -> Table:
 
 
 @lru_cache(maxsize=None)
-def load_semantic(semantic_dir: Path = SEMANTIC_DIR) -> SemanticLayer:
+def load_semantic(semantic_dir: Path | None = None) -> SemanticLayer:
+    # Default resolves through the dataset registry (TN_DATASET / retail) so a
+    # caller that passes nothing gets the active dataset's semantic layer; an
+    # explicit dir still wins for callers that thread it (the KG compiler,
+    # governance.pg). Existing no-arg callers keep working unchanged.
+    if semantic_dir is None:
+        from semantic_layer.datasets import get_dataset
+
+        semantic_dir = get_dataset().semantic_dir
     semantic_dir = Path(semantic_dir)
     metrics_raw = _load_dir(semantic_dir / "metrics")
     dims_raw = _load_dir(semantic_dir / "dimensions")
@@ -195,5 +206,10 @@ def load_semantic(semantic_dir: Path = SEMANTIC_DIR) -> SemanticLayer:
     return SemanticLayer(metrics=metrics, dimensions=dimensions, tables=tables)
 
 
-def schema_module():
-    return _load_schema_module()
+def schema_module(schema_py: Path | None = None):
+    # Default resolves through the dataset registry; an explicit path still wins.
+    if schema_py is None:
+        from semantic_layer.datasets import get_dataset
+
+        schema_py = get_dataset().schema_py
+    return _load_schema_module(schema_py)

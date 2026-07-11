@@ -28,6 +28,29 @@ services:
       retries: 20
       start_period: 20s
 
+  # Second Neo4j instance for the shinhan dataset (ADR 0011). Neo4j isolation is
+  # instance-per-dataset because arbitrary Cypher can't be tenant-scoped reliably;
+  # the shinhan graph lives here on 7688/7475, the retail graph stays on 7687/7474.
+  # Same image and auth as the retail instance; modest heap mirroring it.
+  neo4j-shinhan:
+    image: neo4j:5-community
+    container_name: true-north-neo4j-shinhan
+    ports:
+      - "7475:7474"   # HTTP browser UI
+      - "7688:7687"   # bolt
+    environment:
+      NEO4J_AUTH: "${NEO4J_AUTH:-neo4j/true-north-dev}"
+      NEO4J_server_memory_pagecache_size: "256M"
+      NEO4J_server_memory_heap_max__size: "512M"
+    volumes:
+      - neo4j-shinhan-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p \"$${NEO4J_PASSWORD:-true-north-dev}\" 'RETURN 1' || exit 1"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 20s
+
   # Postgres for the runtime policy store + query-audit log (ADR 0010).
   # Same compile-from-authored-YAML pattern as Neo4j (ADR 0005): users.yaml is
   # the authored source, `python -m governance.pg` hydrates this at deploy time,
@@ -53,4 +76,5 @@ services:
 
 volumes:
   neo4j-data:
+  neo4j-shinhan-data:
   postgres-data:

@@ -20,6 +20,7 @@ from governance.compiler import CompileError, CompiledQuery, compile_query
 from governance.filters import FilterError
 from governance.policy import Policy, RoleAccess, load_policy
 from semantic_layer import Metric, SemanticLayer, load_semantic, schema_module
+from semantic_layer.datasets import Dataset, get_dataset
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = REPO_ROOT / "source" / "data"
@@ -28,37 +29,47 @@ DATA_DIR = REPO_ROOT / "source" / "data"
 # --- shared plumbing --------------------------------------------------------
 
 
-POLICY_STORE_UNREACHABLE_MSG = (
-    "policy store is not reachable; run: "
-    "docker compose up --wait && uv run python -m governance.pg"
-)
+def _policy_store_unreachable_msg(dataset: str) -> str:
+    return (
+        "policy store is not reachable; run: docker compose up --wait && "
+        f"uv run python -m governance.pg --dataset {dataset}"
+    )
+
+
+# Kept for backward reference; the dataset-scoped message is preferred.
+POLICY_STORE_UNREACHABLE_MSG = _policy_store_unreachable_msg("retail")
 
 
 class PolicyStoreUnreachable(Exception):
     """Raised when the runtime policy store (Postgres) cannot be reached."""
 
 
-def _services() -> tuple[SemanticLayer, Policy]:
+def _services(dataset: str | None = None) -> tuple[SemanticLayer, Policy, Dataset]:
     """Semantic layer (from disk) + runtime Policy (from Postgres, ADR 0010).
 
-    users.yaml is still the authored source (load_policy), but the CLI reads the
-    *runtime* policy from the Postgres store hydrated by `python -m governance.pg`.
-    If the store is unreachable we raise PolicyStoreUnreachable; callers turn that
-    into a clean INTERNAL envelope (mirrors the missing-warehouse-data pattern in
-    _execute) rather than leaking a traceback.
+    Resolves the dataset bundle (retail default) and loads that dataset's
+    semantic layer and its schema-scoped Postgres policy store. users.yaml is
+    still the authored source (load_policy), but the CLI reads the *runtime*
+    policy from the Postgres store hydrated by `python -m governance.pg
+    --dataset <key>`. If the store is unreachable we raise PolicyStoreUnreachable;
+    callers turn that into a clean INTERNAL envelope (mirrors the
+    missing-warehouse-data pattern in _execute) rather than leaking a traceback.
     """
     from governance.pg import load_policy_from_db
 
-    sem = load_semantic()
+    ds = get_dataset(dataset)
+    sem = load_semantic(ds.semantic_dir)
     try:
-        pol = load_policy_from_db(semantic=sem)
+        pol = load_policy_from_db(semantic=sem, dataset=ds.key)
     except Exception as e:  # noqa: BLE001 — any driver/connection failure is "unreachable"
         raise PolicyStoreUnreachable(str(e)) from e
-    return sem, pol
+    return sem, pol, ds
 
 
-def _policy_store_error_envelope() -> dict:
-    return _env.error_envelope(None, "INTERNAL", POLICY_STORE_UNREACHABLE_MSG, None)
+def _policy_store_error_envelope(dataset: str = "retail") -> dict:
+    return _env.error_envelope(
+        None, "INTERNAL", _policy_store_unreachable_msg(dataset), None
+    )
 
 
 def _auth(pol: Policy, token: str):
@@ -75,8 +86,8 @@ def _metric_catalog_type(metric: Metric) -> str:
 # --- whoami -----------------------------------------------------------------
 
 
-def whoami(token: str) -> dict:
-    sem, pol = _services()
+def whoami(token: str, dataset: str | None = None) -> dict:
+    sem, pol, _ds = _services(dataset)
     persona, err = _auth(pol, token)
     if err:
         return err
@@ -93,8 +104,8 @@ def whoami(token: str) -> dict:
 # --- metrics ----------------------------------------------------------------
 
 
-def metrics_list(token: str) -> dict:
-    sem, pol = _services()
+def metrics_list(token: str, dataset: str | None = None) -> dict:
+    sem, pol, _ds = _services(dataset)
     persona, err = _auth(pol, token)
     if err:
         return err
@@ -113,8 +124,8 @@ def metrics_list(token: str) -> dict:
     return _env.ok_envelope(persona.public_short(), {"metrics": metrics}, {}, [])
 
 
-def metrics_describe(key: str, token: str) -> dict:
-    sem, pol = _services()
+def metrics_describe(key: str, token: str, dataset: str | None = None) -> dict:
+    sem, pol, _ds = _services(dataset)
     persona, err = _auth(pol, token)
     if err:
         return err
@@ -165,8 +176,8 @@ def _dim_catalog_type(d) -> str:
 # --- dimensions -------------------------------------------------------------
 
 
-def dimensions_list(token: str) -> dict:
-    sem, pol = _services()
+def dimensions_list(token: str, dataset: str | None = None) -> dict:
+    sem, pol, _ds = _services(dataset)
     persona, err = _auth(pol, token)
     if err:
         return err
@@ -185,8 +196,8 @@ def dimensions_list(token: str) -> dict:
     return _env.ok_envelope(persona.public_short(), {"dimensions": dims}, {}, [])
 
 
-def dimensions_describe(key: str, token: str) -> dict:
-    sem, pol = _services()
+def dimensions_describe(key: str, token: str, dataset: str | None = None) -> dict:
+    sem, pol, _ds = _services(dataset)
     persona, err = _auth(pol, token)
     if err:
         return err
@@ -223,8 +234,9 @@ def query(
     start: str | None = None,
     end: str | None = None,
     limit: int | None = None,
+    dataset: str | None = None,
 ) -> dict:
-    sem, pol = _services()
+    sem, pol, ds = _services(dataset)
     persona, err = _auth(pol, token)
     if err:
         return err
@@ -249,18 +261,18 @@ def query(
     except (CompileError, FilterError) as e:
         return _env.error_envelope(persona.public_short(), e.code, e.message, e.details)
 
-    return _execute(sem, pol, persona, access, metric, cq, grain, start, end)
+    return _execute(sem, pol, persona, access, metric, cq, grain, start, end, ds.data_dir)
 
 
-def _execute(sem, pol, persona, access, metric, cq: CompiledQuery, grain, start, end) -> dict:
+def _execute(sem, pol, persona, access, metric, cq: CompiledQuery, grain, start, end, data_dir: Path = DATA_DIR) -> dict:
     from query.engine import connect, list_tables
 
     warnings: list[dict] = []
 
     # data present?
-    available = set(list_tables(DATA_DIR))
+    available = set(list_tables(data_dir))
     missing = [t for t in metric.tables if t not in available]
-    parquet_present = any((DATA_DIR / "parquet").glob("*.parquet")) if (DATA_DIR / "parquet").is_dir() else False
+    parquet_present = any((data_dir / "parquet").glob("*.parquet")) if (data_dir / "parquet").is_dir() else False
     if missing or not parquet_present:
         return _env.error_envelope(
             persona.public_short(), "INTERNAL",
@@ -268,7 +280,7 @@ def _execute(sem, pol, persona, access, metric, cq: CompiledQuery, grain, start,
             {"missing_tables": missing},
         )
 
-    conn = connect(DATA_DIR)
+    conn = connect(data_dir)
     try:
         rel = conn.execute(cq.sql)
         raw_rows = rel.fetchall()
@@ -472,26 +484,27 @@ def _denial_envelope(persona, denial, metric_key: str) -> dict:
 # neo4j dependency loaded.
 
 
-def kg_schema() -> dict:
+def kg_schema(dataset: str | None = None) -> dict:
     """Graph self-description — tokenless per USING-TN; static payload."""
     from knowledge_graph import api as _kg
 
+    ds = get_dataset(dataset)
     return _env.ok_envelope(
-        None, _kg.get_schema(), {"graph_compiled_at": _kg.compiled_at()}, []
+        None, _kg.get_schema(), {"graph_compiled_at": _kg.compiled_at(ds)}, []
     )
 
 
-def kg_query(cypher: str, token: str) -> dict:
+def kg_query(cypher: str, token: str, dataset: str | None = None) -> dict:
     """Read-only Cypher for the calling persona, `_access`-annotated (CONTRACT §4.4)."""
     from knowledge_graph import api as _kg
     from knowledge_graph.errors import InvalidQuery, QueryRejected
 
-    sem, pol = _services()
+    sem, pol, ds = _services(dataset)
     persona, err = _auth(pol, token)
     if err is not None:
         return err
     try:
-        out = _kg.run_cypher(cypher, persona.role)
+        out = _kg.run_cypher(cypher, persona.role, dataset=ds)
     except QueryRejected as e:
         return _env.error_envelope(
             persona.public_short(), "QUERY_REJECTED", e.message, {"reason": e.reason}
