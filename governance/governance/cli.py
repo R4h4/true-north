@@ -1,13 +1,14 @@
-"""Stub governed CLI (`tn`) — Typer app that replays canned JSON envelopes.
+"""Governed CLI (`tn`) — Typer app (CONTRACT.md v0.3).
 
-Same contract, same goldens as the real CLI (CONTRACT.md v0.3). Every command
-reconstructs its normalized request and delegates to the replay engine; the
-matched envelope is printed verbatim on stdout (one JSON object), diagnostics go
-to stderr, and the exit code follows `response.ok` (0 true / 1 false). Missing
-required options (e.g. `--token`) are Typer usage errors → exit 2.
+The warehouse surface (whoami, metrics list/describe, dimensions list/describe,
+query) is served by the REAL governance service (governance.service): persona
+resolution, derived denials, SQLGlot-compiled DuckDB queries, disclosure. The
+knowledge-graph surface (kg schema/query) still replays canned envelopes until
+Agent B's graph is wired in by the coordinator.
 
-The engine is loaded from the repo's fixture directories, discovered relative to
-this file so `uv run tn ...` works from the worktree root.
+All output is a single JSON envelope on stdout (logs on stderr); the exit code
+follows `response.ok` (0 true / 1 false). Missing required options (e.g.
+`--token`) are Typer usage errors → exit 2.
 """
 
 from __future__ import annotations
@@ -19,7 +20,7 @@ from typing import Optional
 
 import typer
 
-from governance import replay
+from governance import replay, service
 
 app = typer.Typer(
     add_completion=False,
@@ -48,7 +49,7 @@ def _engine() -> replay.ReplayEngine:
 
 
 def _emit(argv: list[str]) -> None:
-    """Look up a fixture for this normalized argv, print it, exit per `ok`.
+    """Replay path (kg surface only): look up a fixture, print it, exit per `ok`.
 
     argv is the reconstructed command as the contract expresses it (no leading
     "tn"). Unmatched -> INTERNAL envelope, exit 1.
@@ -57,7 +58,11 @@ def _emit(argv: list[str]) -> None:
     if envelope is None:
         print("stub: no replay fixture for this request", file=sys.stderr)
         envelope = replay.internal_error_envelope()
-    # Single JSON document on stdout; logs stay on stderr.
+    _emit_envelope(envelope)
+
+
+def _emit_envelope(envelope: dict) -> None:
+    """Print a single JSON envelope on stdout and exit per `ok`."""
     print(json.dumps(envelope, ensure_ascii=False))
     raise typer.Exit(code=0 if envelope.get("ok") else 1)
 
@@ -68,7 +73,7 @@ def _emit(argv: list[str]) -> None:
 @app.command()
 def whoami(token: str = typer.Option(..., "--token")):
     """Identity + permissions for the calling token."""
-    _emit(["whoami", "--token", token])
+    _emit_envelope(service.whoami(token))
 
 
 @app.command()
@@ -83,20 +88,17 @@ def query(
     limit: Optional[int] = typer.Option(None, "--limit"),
 ):
     """Governed metric query."""
-    argv = ["query", "--token", token, "--metric", metric]
-    for g in group_by or []:
-        argv += ["--group-by", g]
-    if grain is not None:
-        argv += ["--grain", grain]
-    for f in filter or []:
-        argv += ["--filter", f]
-    if start is not None:
-        argv += ["--start", start]
-    if end is not None:
-        argv += ["--end", end]
-    if limit is not None:
-        argv += ["--limit", str(limit)]
-    _emit(argv)
+    _emit_envelope(
+        service.query(
+            token, metric,
+            group_by=list(group_by or []),
+            grain=grain,
+            filters=list(filter or []),
+            start=start,
+            end=end,
+            limit=limit,
+        )
+    )
 
 
 # --- metrics ----------------------------------------------------------------
@@ -104,12 +106,12 @@ def query(
 
 @metrics_app.command("list")
 def metrics_list(token: str = typer.Option(..., "--token")):
-    _emit(["metrics", "list", "--token", token])
+    _emit_envelope(service.metrics_list(token))
 
 
 @metrics_app.command("describe")
 def metrics_describe(key: str, token: str = typer.Option(..., "--token")):
-    _emit(["metrics", "describe", key, "--token", token])
+    _emit_envelope(service.metrics_describe(key, token))
 
 
 # --- dimensions -------------------------------------------------------------
@@ -117,12 +119,12 @@ def metrics_describe(key: str, token: str = typer.Option(..., "--token")):
 
 @dimensions_app.command("list")
 def dimensions_list(token: str = typer.Option(..., "--token")):
-    _emit(["dimensions", "list", "--token", token])
+    _emit_envelope(service.dimensions_list(token))
 
 
 @dimensions_app.command("describe")
 def dimensions_describe(key: str, token: str = typer.Option(..., "--token")):
-    _emit(["dimensions", "describe", key, "--token", token])
+    _emit_envelope(service.dimensions_describe(key, token))
 
 
 # --- kg ---------------------------------------------------------------------

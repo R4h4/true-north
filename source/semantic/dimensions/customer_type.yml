@@ -1,0 +1,6 @@
+key: customer_type
+name: Customer type
+description: Whether the loyalty member is a retail individual or a B2B organisation.
+type: categorical
+source: dim_customer.customer_type
+canonical_values: [retail, b2b]

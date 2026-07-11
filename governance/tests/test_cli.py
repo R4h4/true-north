@@ -64,9 +64,19 @@ def test_kg_schema_needs_no_token():
     assert "result" in env
 
 
-def test_unmatched_request_is_internal_exit_one():
-    # A well-formed command with no fixture -> INTERNAL, exit 1.
+def test_unknown_metric_is_metric_not_found_exit_one():
+    # The warehouse surface is now real: an unknown metric key is a resolved
+    # error (existence-vs-permission distinction), not an INTERNAL/no-fixture.
     proc = run_tn("query", "--token", "tok-analyst-binh", "--metric", "no_such_metric_xyz")
+    assert proc.returncode == 1
+    env = parse_stdout(proc)
+    assert env["ok"] is False
+    assert env["error"]["code"] == "METRIC_NOT_FOUND"
+
+
+def test_unmatched_kg_request_is_internal_exit_one():
+    # The KG surface still replays: an un-fixtured cypher -> INTERNAL, exit 1.
+    proc = run_tn("kg", "query", "--token", "tok-analyst-binh", "MATCH (n:Nope) RETURN n")
     assert proc.returncode == 1
     env = parse_stdout(proc)
     assert env["ok"] is False
