@@ -47,9 +47,7 @@ export const ScenePersonaSwitch: React.FC = () => {
             ...fadeUp(frame, 12),
           }}
         >
-          Same question.
-          <br />
-          Different <span style={{ color: C.accent }}>persona.</span>
+          Permission is <span style={{ color: C.accent }}>enforced.</span>
         </div>
         <div
           style={{
@@ -61,7 +59,7 @@ export const ScenePersonaSwitch: React.FC = () => {
             ...fadeUp(frame, 28),
           }}
         >
-          Every answer is resolved through the semantic layer — per persona access policy.
+          Every answer respects what your role is allowed to see — true data governance.
         </div>
       </div>
     </AbsoluteFill>

@@ -14,7 +14,7 @@ import { Scene6Outro } from "./scenes/Scene6Outro";
 
 // Scene lengths (frames @30). Transitions overlap by their own duration, so the
 // master length is the sum of scene lengths minus the overlaps.
-const S = { hero: 230, ambiguity: 300, answer: 330, persona: 80, denial: 300, dashboard: 240, outro: 90 };
+const S = { hero: 230, ambiguity: 300, answer: 330, persona: 115, denial: 300, dashboard: 240, outro: 90 };
 const T = 15; // transition frames
 const NUM_TRANSITIONS = 6;
 export const HERO_DURATION =
@@ -28,7 +28,10 @@ const t = () => linearTiming({ durationInFrames: T });
 export const HeroVideo: React.FC = () => {
   return (
     <AbsoluteFill>
-      <TransitionSeries>
+      <TransitionSeries
+        style={{
+          translate: "-1px 0px"
+        }}>
         <TransitionSeries.Sequence durationInFrames={S.hero}>
           <Scene1Hero />
         </TransitionSeries.Sequence>
