@@ -7,17 +7,18 @@ import { waitForFonts } from "./theme/fonts";
 import { Scene1Hero } from "./scenes/Scene1Hero";
 import { Scene2Ambiguity } from "./scenes/Scene2Ambiguity";
 import { Scene3Answer } from "./scenes/Scene3Answer";
+import { ScenePersonaSwitch } from "./scenes/ScenePersonaSwitch";
 import { Scene4Denial } from "./scenes/Scene4Denial";
 import { Scene5Dashboard } from "./scenes/Scene5Dashboard";
 import { Scene6Outro } from "./scenes/Scene6Outro";
 
 // Scene lengths (frames @30). Transitions overlap by their own duration, so the
 // master length is the sum of scene lengths minus the overlaps.
-const S = { hero: 230, ambiguity: 300, answer: 330, denial: 300, dashboard: 240, outro: 90 };
+const S = { hero: 230, ambiguity: 300, answer: 330, persona: 80, denial: 300, dashboard: 240, outro: 90 };
 const T = 15; // transition frames
-const NUM_TRANSITIONS = 5;
+const NUM_TRANSITIONS = 6;
 export const HERO_DURATION =
-  S.hero + S.ambiguity + S.answer + S.denial + S.dashboard + S.outro - NUM_TRANSITIONS * T;
+  S.hero + S.ambiguity + S.answer + S.persona + S.denial + S.dashboard + S.outro - NUM_TRANSITIONS * T;
 
 const fontHandle = delayRender("fonts");
 waitForFonts().then(() => continueRender(fontHandle));
@@ -38,6 +39,10 @@ export const HeroVideo: React.FC = () => {
         <TransitionSeries.Transition presentation={fade()} timing={t()} />
         <TransitionSeries.Sequence durationInFrames={S.answer}>
           <Scene3Answer />
+        </TransitionSeries.Sequence>
+        <TransitionSeries.Transition presentation={fade()} timing={t()} />
+        <TransitionSeries.Sequence durationInFrames={S.persona}>
+          <ScenePersonaSwitch />
         </TransitionSeries.Sequence>
         <TransitionSeries.Transition presentation={fade()} timing={t()} />
         <TransitionSeries.Sequence durationInFrames={S.denial}>
