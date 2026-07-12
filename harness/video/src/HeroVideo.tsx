@@ -13,7 +13,7 @@ import { Scene6Outro } from "./scenes/Scene6Outro";
 
 // Scene lengths (frames @30). Transitions overlap by their own duration, so the
 // master length is the sum of scene lengths minus the overlaps.
-const S = { hero: 150, ambiguity: 300, answer: 330, denial: 300, dashboard: 240, outro: 90 };
+const S = { hero: 230, ambiguity: 300, answer: 330, denial: 300, dashboard: 240, outro: 90 };
 const T = 15; // transition frames
 const NUM_TRANSITIONS = 5;
 export const HERO_DURATION =
