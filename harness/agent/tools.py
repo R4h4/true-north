@@ -172,8 +172,12 @@ def query_warehouse(
     never guessed). OMIT every parameter you don't need - never pass empty
     strings or defaults. group_by/filter use dimension KEYS exactly as returned
     by get_metric_context (e.g. 'channel'), NEVER display names ('Sales
-    channel'). time_grain is a TIME granularity only (e.g. 'month') and is NOT
-    for dimensions - leave it out unless the user asks for a time series.
+    channel'). time_grain is a TIME granularity only (e.g. 'day'/'month'/
+    'quarter') and is NOT for dimensions - leave it out unless the user asks
+    for a time series. For a trend spanning more than ~8 weeks, pass a grain
+    that keeps the series readable ('month' for a range of months, 'quarter'
+    for a year+) rather than defaulting to daily. A "by <time> by <dimension>"
+    request means BOTH group_by=<dimension> AND time_grain=<time>.
     Dates are YYYY-MM-DD; filter syntax: "dimension = 'value'". The envelope's
     metadata.applied_permissions, warnings, and provenance are part of the
     answer - narrate them."""
