@@ -7,6 +7,7 @@
 // Negative values are supported (zero baseline, red bars) - retail margins
 // go negative and a chart that clips them lies by omission.
 
+export type ChartSeries = { name: string; points: { x: string; y: number }[] };
 export type ChartPayload = {
   type: "bar" | "hbar" | "line" | "kpi";
   title: string;
@@ -14,6 +15,9 @@ export type ChartPayload = {
   y_label: string;
   y_format: "percent" | "vnd" | "number";
   points: { x: string; y: number }[];
+  // Multi-series line (e.g. one line per channel). When present the chart
+  // renders as a multi-line chart with a legend; `points` is unused.
+  series?: ChartSeries[];
   as_of?: string;
 };
 
@@ -25,6 +29,10 @@ const GRID = "#eef0f7";
 const ZERO = "#d9dce8";
 const INK = "#363d52";
 const MUTED = "#8b90a3";
+
+// Distinct series colors for multi-line charts (accent first, then a spread of
+// hues that stay legible on the light card).
+const SERIES_COLORS = [ACCENT, NAVY, "#259b6c", "#b7791f", "#3b5a8a", RED, "#0d9488", "#c2410c"];
 
 function formatY(v: number, fmt: ChartPayload["y_format"]): string {
   if (fmt === "percent") return `${(v * 100).toFixed(Math.abs(v * 100) >= 10 ? 0 : 1)}%`;
@@ -223,9 +231,89 @@ function XYChart({ chart }: { chart: ChartPayload }) {
   );
 }
 
+// Multi-series line: one polyline per series over a shared x-axis, with a
+// legend below the plot. ISO date x-values sort lexically = chronologically.
+function MultiLineChart({ chart }: { chart: ChartPayload }) {
+  const series = (chart.series ?? []).filter((s) => s.points.length > 0);
+  const xs = Array.from(new Set(series.flatMap((s) => s.points.map((p) => p.x)))).sort();
+  const { vMax, vMin, span } = valueScale(series.flatMap((s) => s.points.map((p) => p.y)));
+
+  const legendRows = Math.ceil(series.length / 3);
+  const PAD = { top: 30, right: 16, bottom: 44 + legendRows * 18, left: 64 };
+  const H = 250 + legendRows * 18;
+  const plotW = W - PAD.left - PAD.right;
+  const plotH = H - PAD.top - PAD.bottom;
+  const xStep = plotW / Math.max(xs.length, 1);
+  const xIndex = new Map(xs.map((x, i) => [x, i]));
+  const xPos = (x: string) => PAD.left + ((xIndex.get(x) ?? 0) + 0.5) * xStep;
+  const yPos = (v: number) => PAD.top + ((vMax - v) / span) * plotH;
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => vMin + f * span);
+  const legendY0 = H - legendRows * 18 + 4;
+
+  return (
+    <div className="chart-card">
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={chart.title}>
+        <text x={PAD.left} y={18} fontSize={14.5} fontWeight={600} fill={INK}>
+          {chart.title}
+        </text>
+        {ticks.map((t, i) => (
+          <g key={i}>
+            <line x1={PAD.left} x2={W - PAD.right} y1={yPos(t)} y2={yPos(t)} stroke={GRID} strokeWidth={1} />
+            <text x={PAD.left - 8} y={yPos(t) + 4} fontSize={11} fill={MUTED} textAnchor="end">
+              {formatY(t, chart.y_format)}
+            </text>
+          </g>
+        ))}
+        {vMin < 0 && (
+          <line x1={PAD.left} x2={W - PAD.right} y1={yPos(0)} y2={yPos(0)} stroke={ZERO} strokeWidth={1.2} />
+        )}
+        {series.map((s, si) => {
+          const color = SERIES_COLORS[si % SERIES_COLORS.length];
+          const pts = [...s.points].sort((a, b) => (a.x < b.x ? -1 : a.x > b.x ? 1 : 0));
+          return (
+            <g key={s.name}>
+              <polyline
+                points={pts.map((p) => `${xPos(p.x)},${yPos(p.y)}`).join(" ")}
+                fill="none"
+                stroke={color}
+                strokeWidth={2}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+              />
+              {pts.map((p) => (
+                <circle key={p.x} cx={xPos(p.x)} cy={yPos(p.y)} r={2.5} fill="#ffffff" stroke={color} strokeWidth={1.6} />
+              ))}
+            </g>
+          );
+        })}
+        {xs.map((x, i) => (
+          <text key={x} x={PAD.left + (i + 0.5) * xStep} y={H - PAD.bottom + 18} fontSize={10.5} fill={MUTED} textAnchor="middle">
+            {xTick(x, i === 0)}
+          </text>
+        ))}
+        {series.map((s, si) => {
+          const lx = PAD.left + (si % 3) * (plotW / 3);
+          const ly = legendY0 + Math.floor(si / 3) * 18;
+          const color = SERIES_COLORS[si % SERIES_COLORS.length];
+          return (
+            <g key={`legend-${s.name}`}>
+              <line x1={lx} x2={lx + 14} y1={ly} y2={ly} stroke={color} strokeWidth={2.4} />
+              <text x={lx + 20} y={ly + 4} fontSize={11} fill={INK}>
+                {truncate(s.name, 18)}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+      <Footer chart={chart} />
+    </div>
+  );
+}
+
 export function ChartView({ chart }: { chart: ChartPayload }) {
-  if ((chart.points ?? []).length === 0) return null;
   if (chart.type === "kpi") return <KpiCard chart={chart} />;
+  if ((chart.series ?? []).length > 0) return <MultiLineChart chart={chart} />;
+  if ((chart.points ?? []).length === 0) return null;
   if (chart.type === "hbar") return <HBarChart chart={chart} />;
   return <XYChart chart={chart} />;
 }
