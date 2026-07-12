@@ -8,7 +8,7 @@ description: >
   vintage cohort into the surrounding calendar month's larger, more seasoned loan
   population and hides it. Only vintage_month grouping surfaces cohort-level quality
   problems (e.g. a single bad origination month).
-concept: fpd-rate
+concept: first-payment-default
 type: ratio
 unit: ratio
 version: "0.1"

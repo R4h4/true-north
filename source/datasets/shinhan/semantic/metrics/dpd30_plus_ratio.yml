@@ -7,7 +7,7 @@ description: >
   have their DPD reset to 0 and land back in 'current' — so this ratio can understate
   risk unless is_restructured is surfaced alongside it. A restructuring campaign will
   make this ratio drop without the underlying repayment behavior improving.
-concept: dpd30-plus-ratio
+concept: early-delinquency
 type: ratio
 unit: ratio
 version: "0.1"
