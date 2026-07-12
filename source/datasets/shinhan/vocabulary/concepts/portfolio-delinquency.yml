@@ -5,6 +5,6 @@ definition: >-
   early-warning 30+ DPD, hard non-performing 90+ DPD, or origination-quality first-payment
   default — each answers a different management question and has a different caveat.
   Pick a variant and state it.
-aliases: [delinquency, overdue rate, bad debt, portfolio quality, no xau]
+aliases: [delinquency, overdue rate, bad debt, portfolio quality]
 variant_of: null
 measured_by: null

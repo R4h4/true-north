@@ -530,6 +530,39 @@ class TestPolicyValidator:
 
 
 # ---------------------------------------------------------------------------
+# Template builders (demo bug 2026-07-12: shinhan fpd_rate declared
+# compute.template with no builder in governance.templates -> runtime INTERNAL)
+# ---------------------------------------------------------------------------
+
+class TestTemplateBuilders:
+    def test_declared_template_without_builder_is_flagged(self, tmp_path):
+        def mut(m):
+            m["compute"]["template"] = "no_such_template"
+        errors = validate_semantic(
+            base_semantic(tmp_path, metric_mut=mut), SCHEMA_PY, required_metric_keys=BASE_KEYS
+        )
+        assert any("no_such_template" in e and "builder" in e for e in errors)
+
+    def test_declared_template_with_builder_passes(self, tmp_path):
+        # conversion_rate is a wired retail builder; only the template linkage
+        # is under test here, so reuse the valid baseline metric body.
+        def mut(m):
+            m["compute"]["template"] = "conversion_rate"
+        errors = validate_semantic(
+            base_semantic(tmp_path, metric_mut=mut), SCHEMA_PY, required_metric_keys=BASE_KEYS
+        )
+        assert not any("builder" in e for e in errors)
+
+    def test_every_registered_dataset_template_has_a_builder(self):
+        from semantic_layer.datasets import all_datasets
+
+        for ds in all_datasets():
+            errors = validate_semantic(ds.semantic_dir, ds.schema_py, required_metric_keys=set())
+            template_errors = [e for e in errors if "builder" in e]
+            assert template_errors == [], f"dataset {ds.key}: {template_errors}"
+
+
+# ---------------------------------------------------------------------------
 # CLI entrypoint
 # ---------------------------------------------------------------------------
 
@@ -538,3 +571,13 @@ class TestValidateCli:
         from tools.validate import main
         rc = main([])
         assert rc in (0, 1)
+
+    def test_main_validates_every_registered_dataset(self, capsys):
+        # the retail-only entrypoint let the unvalidated shinhan bundle reach
+        # demo day; main() must now sweep the whole registry.
+        from tools.validate import main
+        main([])
+        err = capsys.readouterr().err
+        from semantic_layer.datasets import all_datasets
+        for ds in all_datasets():
+            assert ds.key in err, f"validate output never mentions dataset '{ds.key}'"

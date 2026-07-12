@@ -8,7 +8,7 @@ description: >
   — they are absent, not counted as non-performing — so a write-off wave makes npl_ratio
   drop with no improvement in underlying portfolio quality. Always check for a
   write-off event before reading a period-over-period NPL improvement as real.
-concept: npl-ratio
+concept: non-performing-loans
 type: ratio
 unit: ratio
 version: "0.1"

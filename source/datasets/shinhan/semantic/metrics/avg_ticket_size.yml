@@ -6,7 +6,7 @@ description: >
   COUNT(loan_id)), NOT an average of per-loan averages — averaging averages across an
   unevenly-sized grouping (e.g. per partner) misweights small partners.
 concept: avg-ticket-size
-type: ratio
+type: derived
 unit: VND
 version: "0.1"
 formula: "SUM(principal) / COUNT(loan_id)"

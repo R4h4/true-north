@@ -94,6 +94,12 @@ _REGISTRY: dict[str, Dataset] = {
 }
 
 
+def all_datasets() -> tuple[Dataset, ...]:
+    """Every registered dataset, in registry order (for whole-registry sweeps
+    like tools.validate — anything less re-creates the retail-only blind spot)."""
+    return tuple(_REGISTRY.values())
+
+
 def get_dataset(key: str | None = None) -> Dataset:
     """Resolve a Dataset. Precedence: explicit ``key`` > ``TN_DATASET`` env > retail.
 

@@ -32,7 +32,19 @@ def _resolve_column(ref: str, tables, table_columns) -> str | None:
     return None
 
 
-def validate_policy(users_yaml: Path, schema_py: Path) -> list[str]:
+def validate_policy(
+    users_yaml: Path,
+    schema_py: Path,
+    required_roles: set[str] | None = None,
+    required_tokens: set[str] | None = None,
+) -> list[str]:
+    # None -> the retail personas pinned by CONTRACT.md §1; pass empty sets for
+    # datasets whose personas the contract does not pin (e.g. shinhan).
+    if required_roles is None:
+        required_roles = CONTRACT_ROLES
+    if required_tokens is None:
+        required_tokens = CONTRACT_TOKENS
+
     users_yaml = Path(users_yaml)
     if not users_yaml.is_file():
         return [f"policy file '{users_yaml}' not found"]
@@ -48,11 +60,11 @@ def validate_policy(users_yaml: Path, schema_py: Path) -> list[str]:
     roles = doc.get("roles") or {}
 
     # --- Contract roles/tokens present ------------------------------------
-    for role in sorted(CONTRACT_ROLES):
+    for role in sorted(required_roles):
         if role not in roles:
             errors.append(f"contract role '{role}' is not declared under roles")
     present_tokens = {u.get("token") for u in users if isinstance(u, dict)}
-    for tok in sorted(CONTRACT_TOKENS):
+    for tok in sorted(required_tokens):
         if tok not in present_tokens:
             errors.append(f"contract token '{tok}' is missing from users")
 

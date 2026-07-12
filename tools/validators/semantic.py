@@ -43,20 +43,40 @@ REQUIRED_TABLE_FIELDS = ("key", "description", "grain", "freshness_note")
 
 
 def _canonical_vocab_map(schema) -> dict[str, set]:
-    """table.column -> the set of canonical values schema.py promises for it."""
-    return {
-        "fact_sales_lines.channel": set(schema.CHANNELS),
-        "dim_store.region": {"North", "Central", "South"},
-        "dim_sku.category": set(schema.CATEGORIES.keys()),
-        "dim_customer.tier": set(schema.CUSTOMER_TIERS),
-        "dim_customer.customer_type": set(schema.CUSTOMER_TYPES),
-        "dim_store.format": set(schema.STORE_FORMATS),
-        "dim_store.province": set(schema.CANONICAL_PROVINCES),
-        "dim_customer.province": set(schema.CANONICAL_PROVINCES),
-        "fact_returns.reason": set(schema.RETURN_REASONS),
-        "dim_promotion.mechanic": set(schema.PROMO_MECHANICS),
-        "dim_promotion.funded_by": set(schema.PROMO_FUNDERS),
+    """table.column -> the set of canonical values schema.py promises for it.
+
+    Covers every dataset's schema module: an entry appears only when the module
+    defines the backing vocabulary, so retail and shinhan share one map (a
+    lookup only ever fires for sources the dataset's dimensions actually name).
+    """
+    candidates = {
+        # retail
+        "fact_sales_lines.channel": "CHANNELS",
+        "dim_sku.category": "CATEGORIES",
+        "dim_customer.tier": "CUSTOMER_TIERS",
+        "dim_customer.customer_type": "CUSTOMER_TYPES",
+        "dim_store.format": "STORE_FORMATS",
+        "dim_store.province": "CANONICAL_PROVINCES",
+        "dim_customer.province": "CANONICAL_PROVINCES",
+        "fact_returns.reason": "RETURN_REASONS",
+        "dim_promotion.mechanic": "PROMO_MECHANICS",
+        "dim_promotion.funded_by": "PROMO_FUNDERS",
+        # shinhan (consumer lending)
+        "dim_product.product_key": "PRODUCT_KEYS",
+        "dim_channel.channel_key": "CHANNELS",
+        "dim_customer.segment": "SEGMENTS",
+        "dim_customer.income_band": "INCOME_BANDS",
+        "dim_customer.risk_grade": "RISK_GRADES",
+        "fact_loan_snapshots.dpd_bucket": "DPD_BUCKETS",
+        "dim_partner.category": "PARTNER_CATEGORIES",
+        "dim_partner.province": "CANONICAL_PROVINCES",
     }
+    out: dict[str, set] = {"dim_store.region": {"North", "Central", "South"}}
+    for source, attr in candidates.items():
+        vals = getattr(schema, attr, None)
+        if vals is not None:
+            out[source] = set(vals)  # dict vocab (e.g. CATEGORIES) -> its keys
+    return out
 
 
 def _columns_in_expr(expr: str) -> set[str]:
@@ -110,10 +130,11 @@ def validate_semantic(
             errors.append(f"dimension {stem}: type '{dtype}' not in {sorted(DIM_TYPES)}")
 
         source = dim.get("source")
-        if dtype == "time":
-            if source is not None:
-                errors.append(f"dimension {stem}: type time must have null source")
+        if dtype == "time" and source is None:
+            pass  # virtual time dims bind per metric measure — null source is fine
         else:
+            # non-time dims require a source; time dims MAY bind one (a cohort
+            # dimension like shinhan's vintage_month) — when present it must resolve
             if not source:
                 errors.append(f"dimension {stem}: source required for type {dtype}")
             elif "." not in str(source):
@@ -285,6 +306,19 @@ def _validate_compute(stem, metric, tables, table_columns) -> list[str]:
                         errors.append(
                             f"metric {stem}: measure '{mname}' join {side} column '{ref}' unknown"
                         )
+
+    # a declared template must have a fully wired SQL builder — otherwise the
+    # metric only fails at query time, as INTERNAL (demo bug, 2026-07-12)
+    template = compute.get("template")
+    if template is not None:
+        from governance.templates import available_templates
+
+        wired = available_templates()
+        if template not in wired:
+            errors.append(
+                f"metric {stem}: compute.template '{template}' has no registered SQL "
+                f"builder in governance.templates (available: {sorted(wired)})"
+            )
 
     # compute.expr references declared measures only; every declared measure referenced
     top_expr = compute.get("expr")
