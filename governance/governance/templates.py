@@ -309,10 +309,13 @@ def _inventory_days(group_cols, where, limit, grain=None):
 
 def _fpd_rate(group_cols, where, limit, grain=None):
     # Vintage metric (shinhan): share of a DISBURSEMENT-MONTH cohort whose
-    # snapshot shows dpd >= 30 within 2 snapshot months of disbursement. The
-    # cohort universe is fact_disbursements — where (row filters, product/
-    # channel filters, --start/--end on disbursed_date) applies there, so a
-    # loan excluded from the cohort can never leak in via the numerator join.
+    # snapshot shows dpd >= 30 within its first 2 snapshot months on book —
+    # month-diff 0..1 from the disbursement month, matching the generator's
+    # _FPD_WINDOW_MONTHS onset window (months_elapsed counts the disbursement-
+    # month snapshot as 1). The cohort universe is fact_disbursements — where
+    # (row filters, product/channel filters, --start/--end on disbursed_date)
+    # applies there, so a loan excluded from the cohort can never leak in via
+    # the numerator join.
     sel_parts = []
     group_parts = []
     if grain is not None:
@@ -331,7 +334,7 @@ def _fpd_rate(group_cols, where, limit, grain=None):
       JOIN fact_disbursements AS dd ON s.loan_id = dd.loan_id
       WHERE s.dpd >= 30
         AND DATE_DIFF('month', DATE_TRUNC('month', dd.disbursed_date),
-                      DATE_TRUNC('month', s.snapshot_month)) BETWEEN 0 AND 2
+                      DATE_TRUNC('month', s.snapshot_month)) BETWEEN 0 AND 1
     )
     SELECT {gsel}
            CAST(COUNT(fpd.loan_id) AS DOUBLE) / NULLIF(COUNT(*), 0) AS fpd_rate

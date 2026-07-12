@@ -66,7 +66,7 @@ key: channel
 name: Sales channel
 description: Transaction channel as recorded at point of sale.
 type: categorical                 # categorical | time | geo | entity
-source: fact_sales_lines.channel  # table.column; null only for type: time (virtual — bound per measure via time_column)
+source: fact_sales_lines.channel  # table.column; type: time MAY be null (virtual — bound per measure via time_column) or a resolvable column (cohort dims like shinhan's vintage_month)
 canonical_values: [in_store, web, app, b2b]   # required iff type: categorical; must match schema.py vocabularies
 grains: [day, week, month, quarter, year]     # required iff type: time
 ```

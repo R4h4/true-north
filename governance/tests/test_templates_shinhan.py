@@ -44,8 +44,11 @@ def test_fpd_rate_numerator_is_dpd30_within_two_snapshot_months():
     cq = _compile("tok-exec-sujin", "fpd_rate", group_by=["product"])
     low = cq.sql.lower()
     assert "dpd >= 30" in low
-    # vintage window: snapshot month relative to the disbursement month
+    # vintage window: the loan's first two snapshots — month-diff 0..1 from the
+    # disbursement month (matches the generator's _FPD_WINDOW_MONTHS onset window;
+    # 0..2 read plausibly but nearly doubled the calibrated ~6.75% portfolio FPD)
     assert "disbursed_date" in low and "snapshot_month" in low
+    assert "between 0 and 1" in low
 
 
 def test_fpd_rate_is_byte_deterministic():
